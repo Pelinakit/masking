@@ -9,8 +9,23 @@ Masking is a Sims-inspired game about neurodivergent experiences in remote work.
 ## Tech Stack
 
 - **Engine**: Phaser 3 (TypeScript)
-- **Runtime/Package Manager**: Bun
-- **Version Control**: Git
+- **Runtime/Bundler**: Bun (native bundling, no Vite)
+- **Deployment**: GitHub Pages (auto-deploy on push)
+
+## Commands
+
+```bash
+bun run dev      # Build + start dev server (port 3000)
+bun run build    # Production build to dist/
+bun run serve    # Serve dist/ without rebuilding
+```
+
+## Dev Mode
+
+Toggle in main menu (bottom right). When enabled:
+- **Reload YAML** button appears (top right in game)
+- YAML files in `public/data/` are served live without rebuild
+- Edit YAML, click reload, changes apply immediately
 
 ## Architecture Principles
 
