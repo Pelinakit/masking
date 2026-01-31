@@ -11,6 +11,11 @@ hotspots:
     height: 100
     action: sleep
     label: Sleep (E)
+    sprite:
+      path: assets/sprites/furniture/bed.png
+      scale: 1.0
+      offset_x: 0
+      offset_y: 0
 
   - id: laptop
     x: 400
@@ -19,6 +24,11 @@ hotspots:
     height: 80
     action: openLaptop
     label: Laptop (E)
+    sprite:
+      path: assets/sprites/furniture/laptop.png
+      scale: 1.0
+      offset_x: 0
+      offset_y: 0
 
   - id: kitchen
     x: 700
@@ -27,6 +37,11 @@ hotspots:
     height: 120
     action: kitchen
     label: Kitchen (E)
+    sprite:
+      path: assets/sprites/furniture/kitchen.png
+      scale: 1.0
+      offset_x: 0
+      offset_y: 0
 
   - id: door
     x: 900
@@ -36,3 +51,8 @@ hotspots:
     action: exitHome
     label: Door (E)
     condition: "!time.isWorkHours"
+    sprite:
+      path: assets/sprites/furniture/door.png
+      scale: 1.0
+      offset_x: 0
+      offset_y: 0
