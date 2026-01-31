@@ -5,7 +5,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun run build.ts && bun run server.ts --dev",
+    "dev": "bun run server.ts --dev",
     "build": "bun run build.ts --production",
     "serve": "bun run server.ts",
     "type-check": "tsc --noEmit"

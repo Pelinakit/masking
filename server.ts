@@ -1,13 +1,18 @@
 /**
  * Development server using Bun's built-in serve
  * Serves static files from dist/ in production, or builds and serves in dev
+ * In dev mode, watches src/ for changes and rebuilds automatically
  */
+
+import { watch } from 'fs';
 
 const isDev = process.argv.includes('--dev');
 const port = Number(process.env.PORT) || 3000;
 
-if (isDev) {
-  console.log('🔨 Building...');
+// Track connected clients for live reload
+const reloadClients = new Set<ReadableStreamDefaultController>();
+
+async function build() {
   const buildResult = await Bun.build({
     entrypoints: ['./src/main.ts'],
     outdir: './dist',
@@ -21,9 +26,34 @@ if (isDev) {
 
   if (!buildResult.success) {
     console.error('Build failed:', buildResult.logs);
+    return false;
+  }
+  return true;
+}
+
+if (isDev) {
+  console.log('🔨 Building...');
+  if (!await build()) {
     process.exit(1);
   }
   console.log('✅ Build complete');
+
+  // Watch src/ for changes
+  let debounceTimer: Timer | null = null;
+  watch('./src', { recursive: true }, (_event, filename) => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      console.log(`\n🔄 Change detected: ${filename}`);
+      console.log('🔨 Rebuilding...');
+      if (await build()) {
+        console.log('✅ Rebuild complete');
+        // Notify all connected clients to reload
+        for (const controller of reloadClients) {
+          controller.enqueue('data: reload\n\n');
+        }
+      }
+    }, 100);
+  });
 }
 
 // Serve static files
@@ -32,6 +62,26 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
     let pathname = url.pathname;
+
+    // SSE endpoint for live reload
+    if (isDev && pathname === '/__reload') {
+      const stream = new ReadableStream({
+        start(controller) {
+          reloadClients.add(controller);
+          controller.enqueue('data: connected\n\n');
+        },
+        cancel(controller) {
+          reloadClients.delete(controller);
+        },
+      });
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
 
     // Default to index.html
     if (pathname === '/' || pathname === '') {
@@ -82,6 +132,23 @@ const server = Bun.serve({
       woff2: 'font/woff2',
     };
 
+    // Inject live reload script into HTML in dev mode
+    if (isDev && ext === 'html') {
+      let html = await file.text();
+      const reloadScript = `<script>
+new EventSource('/__reload').onmessage = (e) => {
+  if (e.data === 'reload') location.reload();
+};
+</script>`;
+      html = html.replace('</body>', `${reloadScript}</body>`);
+      return new Response(html, {
+        headers: {
+          'Content-Type': 'text/html',
+          'Cache-Control': 'no-cache',
+        },
+      });
+    }
+
     return new Response(file, {
       headers: {
         'Content-Type': contentTypes[ext] || 'application/octet-stream',
@@ -93,5 +160,5 @@ const server = Bun.serve({
 
 console.log(`🎮 Server running at http://localhost:${server.port}`);
 if (isDev) {
-  console.log('📝 Watching for changes... (restart server to rebuild)');
+  console.log('👀 Watching src/ for changes (hot reload enabled)');
 }
