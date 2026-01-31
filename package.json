@@ -8,9 +8,12 @@
     "dev": "bun run server.ts --dev",
     "build": "bun run build.ts --production",
     "serve": "bun run server.ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "speech-gen": "bun run tools/speech-gen/cli.ts",
+    "speech-gen-ui": "bun run tools/speech-gen/server.ts"
   },
   "dependencies": {
+    "hyphen": "^1.14.1",
     "js-yaml": "^4.1.1",
     "phaser": "^3.87.0"
   },

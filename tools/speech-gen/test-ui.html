@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech Sound Generator - Test UI</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 {
+      color: #fff;
+      margin-bottom: 30px;
+    }
+    .section {
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #aaa;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      border: 2px solid #333;
+      border-radius: 8px;
+      background: #16213e;
+      color: #fff;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #0f4c75;
+    }
+    .radio-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .radio-option {
+      position: relative;
+    }
+    .radio-option input {
+      position: absolute;
+      opacity: 0;
+    }
+    .radio-option span {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #16213e;
+      border: 2px solid #333;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .radio-option input:checked + span {
+      background: #0f4c75;
+      border-color: #3282b8;
+      color: #fff;
+    }
+    .radio-option:hover span {
+      border-color: #555;
+    }
+    button {
+      width: 100%;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: 600;
+      background: #3282b8;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0f4c75;
+    }
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      display: none;
+    }
+    .status.loading {
+      display: block;
+      background: #16213e;
+      color: #aaa;
+    }
+    .status.error {
+      display: block;
+      background: #5c1a1a;
+      color: #ff8888;
+    }
+    .status.success {
+      display: block;
+      background: #1a3d1a;
+      color: #88ff88;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔊 Speech Sound Generator</h1>
+
+  <div class="section">
+    <label for="text">Text</label>
+    <input type="text" id="text" value="Hello there! How are you today?" placeholder="Enter text...">
+  </div>
+
+  <div class="section">
+    <label>Voice</label>
+    <div class="radio-group">
+      <label class="radio-option">
+        <input type="radio" name="voice" value="bweh" checked>
+        <span>bweh (friendly)</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="voice" value="buh">
+        <span>buh (calm)</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="voice" value="pip">
+        <span>pip (energetic)</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="voice" value="meh">
+        <span>meh (tired)</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="section">
+    <label>Emotion</label>
+    <div class="radio-group">
+      <label class="radio-option">
+        <input type="radio" name="emotion" value="neutral" checked>
+        <span>neutral</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="emotion" value="bubbly">
+        <span>bubbly</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="emotion" value="sad">
+        <span>sad</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="emotion" value="stern">
+        <span>stern</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="emotion" value="angry">
+        <span>angry</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="emotion" value="giggling">
+        <span>giggling</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="emotion" value="laughing">
+        <span>laughing</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="section">
+    <label>Language</label>
+    <div class="radio-group">
+      <label class="radio-option">
+        <input type="radio" name="lang" value="en" checked>
+        <span>English</span>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="lang" value="fi">
+        <span>Finnish</span>
+      </label>
+    </div>
+  </div>
+
+  <button id="play" onclick="generate()">▶ Play</button>
+
+  <div id="status" class="status"></div>
+
+  <script>
+    let audioContext = null;
+    let currentSource = null;
+
+    async function generate() {
+      const text = document.getElementById('text').value;
+      const voice = document.querySelector('input[name="voice"]:checked').value;
+      const emotion = document.querySelector('input[name="emotion"]:checked').value;
+      const lang = document.querySelector('input[name="lang"]:checked').value;
+      const button = document.getElementById('play');
+      const status = document.getElementById('status');
+
+      if (!text.trim()) {
+        status.className = 'status error';
+        status.textContent = 'Please enter some text';
+        return;
+      }
+
+      // Stop any currently playing audio
+      if (currentSource) {
+        currentSource.stop();
+        currentSource = null;
+      }
+
+      button.disabled = true;
+      button.textContent = '⏳ Generating...';
+      status.className = 'status loading';
+      status.textContent = 'Generating audio...';
+
+      try {
+        const params = new URLSearchParams({ text, voice, emotion, lang });
+        const response = await fetch(`/api/speech-gen?${params}`);
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+
+        // Create audio context if needed
+        if (!audioContext) {
+          audioContext = new AudioContext();
+        }
+
+        // Decode the WAV file
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        // Play the audio
+        currentSource = audioContext.createBufferSource();
+        currentSource.buffer = audioBuffer;
+        currentSource.connect(audioContext.destination);
+        currentSource.start();
+
+        status.className = 'status success';
+        status.textContent = `Playing: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`;
+
+        currentSource.onended = () => {
+          status.style.display = 'none';
+          currentSource = null;
+        };
+
+      } catch (error) {
+        status.className = 'status error';
+        status.textContent = 'Error: ' + error.message;
+      } finally {
+        button.disabled = false;
+        button.textContent = '▶ Play';
+      }
+    }
+
+    // Allow Enter key to play
+    document.getElementById('text').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        generate();
+      }
+    });
+  </script>
+</body>
+</html>
