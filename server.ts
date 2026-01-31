@@ -5,6 +5,7 @@
  */
 
 import { watch } from 'fs';
+import { cpSync, existsSync, mkdirSync } from 'fs';
 
 const isDev = process.argv.includes('--dev');
 const port = Number(process.env.PORT) || 3000;
@@ -13,6 +14,11 @@ const port = Number(process.env.PORT) || 3000;
 const reloadClients = new Set<ReadableStreamDefaultController>();
 
 async function build() {
+  // Ensure dist directory exists
+  if (!existsSync('./dist')) {
+    mkdirSync('./dist');
+  }
+
   const buildResult = await Bun.build({
     entrypoints: ['./src/main.ts'],
     outdir: './dist',
@@ -28,6 +34,24 @@ async function build() {
     console.error('Build failed:', buildResult.logs);
     return false;
   }
+
+  // Copy index.html with updated script path
+  const indexHtml = await Bun.file('./index.html').text();
+  const updatedHtml = indexHtml
+    .replace('/src/main.ts', '/main.js')
+    .replace('type="module" src="/src/main.ts"', 'type="module" src="/main.js"');
+  await Bun.write('./dist/index.html', updatedHtml);
+
+  // Copy public folder contents to dist
+  if (existsSync('./public')) {
+    cpSync('./public', './dist', { recursive: true });
+  }
+
+  // Copy assets if they exist
+  if (existsSync('./assets')) {
+    cpSync('./assets', './dist/assets', { recursive: true });
+  }
+
   return true;
 }
 
