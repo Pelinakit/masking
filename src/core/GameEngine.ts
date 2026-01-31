@@ -9,6 +9,7 @@ import { MainMenuScene } from '@presentation/scenes/MainMenuScene';
 import { RoomScene } from '@presentation/scenes/RoomScene';
 import { LaptopScene } from '@presentation/scenes/LaptopScene';
 import { MeetingScene } from '@presentation/scenes/MeetingScene';
+import { DevOverlayScene } from '@presentation/scenes/DevOverlayScene';
 
 export interface GameConfig {
   containerId: string;
@@ -35,10 +36,15 @@ export class GameEngine {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
-      scene: [BootScene, MainMenuScene, RoomScene, LaptopScene, MeetingScene],
+      scene: [BootScene, MainMenuScene, RoomScene, LaptopScene, MeetingScene, DevOverlayScene],
     };
 
     this.game = new Phaser.Game(phaserConfig);
+
+    // Start DevOverlayScene in parallel once game is ready
+    this.game.events.once('ready', () => {
+      this.game?.scene.start('DevOverlayScene');
+    });
   }
 
   destroy(): void {

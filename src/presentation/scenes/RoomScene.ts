@@ -88,6 +88,46 @@ export class RoomScene extends Phaser.Scene {
         this.inputManager.hideTouchControls();
       }
     });
+
+    // Listen for global YAML reload event
+    this.game.events.on('reloadYAML', () => {
+      this.reloadYAML();
+    });
+  }
+
+  /**
+   * Reload YAML scripts without page refresh
+   */
+  private async reloadYAML(): Promise<void> {
+    console.log('[RoomScene] Reloading YAML scripts...');
+    yamlParser.clearCache();
+    await this.loadSceneData();
+    this.showNotification('YAML reloaded!');
+  }
+
+  /**
+   * Show temporary notification
+   */
+  private showNotification(message: string): void {
+    const { width } = this.cameras.main;
+    const notif = this.add.text(width / 2, 50, message, {
+      fontFamily: 'Comic Relief, sans-serif',
+      fontSize: '18px',
+      color: '#00ff00',
+      backgroundColor: '#000000',
+      padding: { x: 20, y: 10 },
+    });
+    notif.setOrigin(0.5);
+    notif.setDepth(10001);
+
+    this.tweens.add({
+      targets: notif,
+      alpha: 0,
+      y: 30,
+      duration: 2000,
+      ease: 'Power2',
+      onComplete: () => notif.destroy(),
+    });
   }
 
   update(time: number, delta: number): void {

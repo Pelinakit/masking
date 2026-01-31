@@ -83,5 +83,40 @@ export class MainMenuScene extends Phaser.Scene {
       color: '#95a5a6',
       fontFamily: 'Comic Relief, Arial, sans-serif',
     });
+
+    // Dev mode toggle (bottom right)
+    this.createDevModeToggle(width, height);
+  }
+
+  /**
+   * Create dev mode toggle
+   */
+  private createDevModeToggle(width: number, height: number): void {
+    const isDevMode = localStorage.getItem('masking-dev-mode') === 'true';
+
+    const devText = this.add.text(
+      width - 10,
+      height - 30,
+      isDevMode ? '🛠️ Dev Mode: ON' : '🛠️ Dev Mode: OFF',
+      {
+        fontSize: '12px',
+        color: isDevMode ? '#00ff00' : '#666666',
+        fontFamily: 'Comic Relief, Arial, sans-serif',
+      }
+    ).setOrigin(1, 0)
+      .setInteractive({ useHandCursor: true });
+
+    devText.on('pointerdown', () => {
+      const newState = localStorage.getItem('masking-dev-mode') !== 'true';
+      localStorage.setItem('masking-dev-mode', String(newState));
+      devText.setText(newState ? '🛠️ Dev Mode: ON' : '🛠️ Dev Mode: OFF');
+      devText.setColor(newState ? '#00ff00' : '#666666');
+
+      // Notify DevOverlayScene
+      this.game.events.emit('devModeChanged', newState);
+    });
+
+    devText.on('pointerover', () => devText.setAlpha(0.7));
+    devText.on('pointerout', () => devText.setAlpha(1));
   }
 }

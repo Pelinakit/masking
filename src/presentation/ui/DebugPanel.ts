@@ -24,12 +24,12 @@ export class DebugPanel {
   }
 
   /**
-   * Setup toggle key (backtick `)
+   * Setup toggle key (F12 - works on all keyboard layouts)
    */
   private setupToggleKey(): void {
     if (!this.scene.input.keyboard) return;
 
-    this.toggleKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.BACKTICK);
+    this.toggleKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F12);
     this.toggleKey.on('down', () => this.toggle());
   }
 
