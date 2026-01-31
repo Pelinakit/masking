@@ -5,21 +5,18 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "bun run build.ts && bun run server.ts --dev",
+    "build": "bun run build.ts --production",
+    "serve": "bun run server.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "js-yaml": "^4.1.1",
-    "phaser": "^3.87.0",
-    "yaml": "^2.6.1"
+    "phaser": "^3.87.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.10.5",
-    "vite": "^6.0.7"
+    "@types/js-yaml": "^4.0.9"
   },
   "peerDependencies": {
     "typescript": "^5"

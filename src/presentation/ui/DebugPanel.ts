@@ -6,6 +6,7 @@
 
 import Phaser from 'phaser';
 import { StateManager } from '@game/StateManager';
+import { yamlParser } from '@scripting/YAMLParser';
 
 export class DebugPanel {
   private scene: Phaser.Scene;
@@ -115,6 +116,9 @@ export class DebugPanel {
 
     // Event triggers
     yOffset = this.addEventTriggers(yOffset);
+
+    // Script controls (YAML hot reload)
+    yOffset = this.addScriptControls(yOffset);
 
     // State management
     yOffset = this.addStateControls(yOffset);
@@ -255,6 +259,75 @@ export class DebugPanel {
     });
 
     return y + 10;
+  }
+
+  /**
+   * Add script controls (YAML hot reload)
+   */
+  private addScriptControls(startY: number): number {
+    const sectionTitle = this.scene.add.text(20, startY, 'Scripts (YAML)', {
+      fontFamily: 'Comic Relief, sans-serif',
+      fontSize: '16px',
+      color: '#ffff00',
+      fontStyle: 'bold',
+    });
+    this.container?.add(sectionTitle);
+
+    let y = startY + 30;
+
+    const buttons = [
+      {
+        label: '🔄 Reload All YAML',
+        action: () => {
+          yamlParser.clearCache();
+          console.log('[Debug] YAML cache cleared - reloading scene...');
+          this.scene.events.emit('reloadYAML');
+          // Notify user
+          this.showNotification('YAML scripts reloaded!');
+        },
+      },
+      {
+        label: '📊 Cache Stats',
+        action: () => {
+          const stats = yamlParser.getCacheStats();
+          console.log('[Debug] YAML Cache:', stats);
+          this.showNotification(`Cached: ${stats.files} files`);
+        },
+      },
+    ];
+
+    buttons.forEach(({ label, action }) => {
+      const btn = this.createButton(20, y, 360, 35, label, action);
+      this.container?.add(btn);
+      y += 45;
+    });
+
+    return y + 10;
+  }
+
+  /**
+   * Show temporary notification
+   */
+  private showNotification(message: string): void {
+    const { width } = this.scene.cameras.main;
+    const notif = this.scene.add.text(width / 2, 50, message, {
+      fontFamily: 'Comic Relief, sans-serif',
+      fontSize: '18px',
+      color: '#00ff00',
+      backgroundColor: '#000000',
+      padding: { x: 20, y: 10 },
+    });
+    notif.setOrigin(0.5);
+    notif.setDepth(10001);
+
+    this.scene.tweens.add({
+      targets: notif,
+      alpha: 0,
+      y: 30,
+      duration: 2000,
+      ease: 'Power2',
+      onComplete: () => notif.destroy(),
+    });
   }
 
   /**

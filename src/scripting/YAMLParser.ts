@@ -6,6 +6,7 @@
 import { load } from 'js-yaml';
 import type { StatName } from '@game/systems/StatSystem';
 import type { MaskType } from '@game/StateManager';
+import { config } from '../config';
 
 // Scene Script Types
 export interface SceneHotspot {
@@ -128,6 +129,34 @@ export interface MeetingEvent {
 }
 
 export class YAMLParser {
+  private cache: Map<string, { content: string; parsed: any; timestamp: number }> = new Map();
+
+  /**
+   * Clear the cache to force reload of all YAML files
+   */
+  clearCache(): void {
+    this.cache.clear();
+    console.log('[YAMLParser] Cache cleared - next load will fetch fresh data');
+  }
+
+  /**
+   * Reload a specific file (clears from cache and re-fetches)
+   */
+  async reloadFile(path: string): Promise<string> {
+    this.cache.delete(path);
+    return this.loadFile(path);
+  }
+
+  /**
+   * Get cache stats
+   */
+  getCacheStats(): { files: number; paths: string[] } {
+    return {
+      files: this.cache.size,
+      paths: Array.from(this.cache.keys()),
+    };
+  }
+
   /**
    * Parse a scene script
    */
@@ -189,15 +218,32 @@ export class YAMLParser {
   }
 
   /**
-   * Load YAML file from path (async)
+   * Load YAML file from path (async) - uses cache unless cleared
    */
-  async loadFile(path: string): Promise<string> {
+  async loadFile(path: string, bypassCache: boolean = false): Promise<string> {
+    // Check cache first
+    if (!bypassCache && this.cache.has(path)) {
+      return this.cache.get(path)!.content;
+    }
+
+    // Resolve path with base path for data files
+    const fullPath = path.startsWith('/data/') ? config.dataPath(path) : path;
+
     try {
-      const response = await fetch(path);
+      const response = await fetch(fullPath + '?t=' + Date.now()); // Cache-bust browser cache
       if (!response.ok) {
         throw new Error(`Failed to load YAML file: ${response.statusText}`);
       }
-      return await response.text();
+      const content = await response.text();
+
+      // Store in cache
+      this.cache.set(path, {
+        content,
+        parsed: null,
+        timestamp: Date.now(),
+      });
+
+      return content;
     } catch (error) {
       throw new Error(`Failed to load YAML file from ${path}: ${error}`);
     }
