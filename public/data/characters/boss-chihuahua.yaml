@@ -1,0 +1,42 @@
+# NPC Character - Boss (Chihuahua)
+# Spritesheet layout: horizontal strip, 8 frames total
+# Frame 0-1: idle animation
+# Frame 2-3: walk animation
+# Frame 4-5: talk animation
+# Frame 6-7: interact animation
+
+id: boss-chihuahua
+name: Bark Thompson
+species: dog
+
+spritesheet:
+  path: assets/sprites/characters/boss-chihuahua.png
+  frameWidth: 64
+  frameHeight: 96
+
+animations:
+  idle:
+    frames: [0, 1]        # Subtle head movement
+    frameRate: 1.5
+    repeat: -1
+
+  walk:
+    frames: [2, 3]        # Walk cycle
+    frameRate: 6
+    repeat: -1
+
+  talk:
+    frames: [4, 5, 4]     # Mouth movement
+    frameRate: 5
+    repeat: -1
+
+  interact:
+    frames: [6, 7]        # Gesture
+    frameRate: 4
+    repeat: 0
+
+defaultAnimation: idle
+
+accessibility:
+  reducedMotionStaticFrame: 0
+  description: "Small tan chihuahua wearing a business collar, your manager"

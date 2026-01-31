@@ -14,6 +14,7 @@ import { yamlParser, type SceneScript } from '@scripting/YAMLParser';
 import { InputManager } from '@game/systems/InputManager';
 import { TutorialManager } from '@game/systems/TutorialManager';
 import { AudioManager } from '@game/systems/AudioManager';
+import { Character, type CharacterConfig } from '@presentation/components/Character';
 
 export class RoomScene extends Phaser.Scene {
   private stateManager!: StateManager;
@@ -26,13 +27,19 @@ export class RoomScene extends Phaser.Scene {
   private debugPanel!: DebugPanel;
 
   private sceneData?: SceneScript;
-  private player?: Phaser.GameObjects.Sprite;
+  private player?: Character | Phaser.GameObjects.Sprite;
+  private playerConfig?: CharacterConfig;
   private hotspots: Phaser.GameObjects.Rectangle[] = [];
   private interactionPrompts: Map<string, Phaser.GameObjects.Text> = new Map();
 
   private playerX: number = 400;
   private readonly PLAYER_SPEED = 150;
   private readonly ROOM_BOUNDS = { left: 50, right: 950 };
+
+  // Fallback animation state (when Character class isn't used)
+  private fallbackAnimState: string = 'idle';
+  private fallbackFrameIndex: number = 0;
+  private fallbackFrameTimer: number = 0;
 
   constructor() {
     super({ key: 'RoomScene' });
@@ -93,6 +100,23 @@ export class RoomScene extends Phaser.Scene {
     this.game.events.on('reloadYAML', () => {
       this.reloadYAML();
     });
+
+    // Listen for accessibility changes
+    if (typeof window !== 'undefined') {
+      window.addEventListener('accessibility-change', ((event: CustomEvent) => {
+        this.handleAccessibilityChange(event.detail);
+      }) as EventListener);
+    }
+  }
+
+  /**
+   * Handle accessibility setting changes
+   */
+  private handleAccessibilityChange(detail: { setting: string; value: boolean | number }): void {
+    if (this.player instanceof Character) {
+      const settings = this.stateManager.getAccessibilitySettings();
+      this.player.updateAccessibilitySettings(settings);
+    }
   }
 
   /**
@@ -101,8 +125,42 @@ export class RoomScene extends Phaser.Scene {
   private async reloadYAML(): Promise<void> {
     console.log('[RoomScene] Reloading YAML scripts...');
     yamlParser.clearCache();
+
+    // Reload scene data
     await this.loadSceneData();
+
+    // Reload character config and update player
+    await this.reloadPlayerCharacter();
+
     this.showNotification('YAML reloaded!');
+  }
+
+  /**
+   * Reload player character config and update sprite
+   */
+  private async reloadPlayerCharacter(): Promise<void> {
+    if (!(this.player instanceof Character)) return;
+
+    try {
+      const newConfig = await yamlParser.loadCharacter('/data/characters/player-cat.yaml', true);
+
+      // Get animation names from new config
+      const animNames = Object.keys(newConfig.animations);
+
+      // Remove old animations
+      Character.removeAnimations(this, 'player-cat', animNames);
+
+      // Create new animations
+      Character.createAnimations(this, newConfig);
+
+      // Update the character instance
+      this.player.updateConfig(newConfig);
+      this.playerConfig = newConfig;
+
+      console.log('[RoomScene] Player character config reloaded');
+    } catch (error) {
+      console.error('[RoomScene] Failed to reload player character:', error);
+    }
   }
 
   /**
@@ -242,18 +300,96 @@ export class RoomScene extends Phaser.Scene {
   }
 
   /**
-   * Create player sprite
+   * Create player sprite using Character class
    */
   private createPlayer(): void {
-    // Placeholder cat sprite (colored rectangle for now)
+    // Get character configs from registry (loaded in BootScene)
+    const characterConfigs = this.registry.get('characterConfigs') as CharacterConfig[] | undefined;
+    this.playerConfig = characterConfigs?.find((c) => c.id === 'player-cat');
+
+    if (this.playerConfig) {
+      // Check if texture exists
+      const textureExists = this.textures.exists(this.playerConfig.id);
+      console.log(`[RoomScene] Creating player, texture '${this.playerConfig.id}' exists: ${textureExists}`);
+
+      if (!textureExists) {
+        console.warn('[RoomScene] Texture not ready, using fallback');
+        this.createPlaceholderPlayer();
+        return;
+      }
+
+      // Get accessibility settings from state manager
+      const accessibilitySettings = this.stateManager.getAccessibilitySettings();
+
+      // Create Character sprite with config
+      this.player = new Character(
+        this,
+        this.playerX,
+        500,
+        this.playerConfig,
+        accessibilitySettings
+      );
+      this.player.setOrigin(0.5, 1);
+
+      console.log('[RoomScene] Created player with Character class');
+    } else {
+      // Fallback to placeholder if config not loaded
+      console.warn('[RoomScene] Player config not found, using placeholder');
+      this.createPlaceholderPlayer();
+    }
+  }
+
+  /**
+   * Create a placeholder player sprite (fallback)
+   */
+  private createPlaceholderPlayer(): void {
+    // Use dimensions from config if available, otherwise defaults
+    const frameWidth = this.playerConfig?.spritesheet.frameWidth ?? 64;
+    const frameHeight = this.playerConfig?.spritesheet.frameHeight ?? 96;
+
     const playerGraphics = this.add.graphics();
+
+    // Draw rectangle with border
     playerGraphics.fillStyle(0xff6b6b, 1);
-    playerGraphics.fillRect(0, 0, 40, 60);
-    playerGraphics.generateTexture('player-cat', 40, 60);
+    playerGraphics.fillRect(0, 0, frameWidth, frameHeight);
+    playerGraphics.lineStyle(3, 0x000000);
+    playerGraphics.strokeRect(2, 2, frameWidth - 4, frameHeight - 4);
+
+    playerGraphics.generateTexture('player-placeholder', frameWidth, frameHeight);
     playerGraphics.destroy();
 
-    this.player = this.add.sprite(this.playerX, 500, 'player-cat');
+    // Create sprite
+    this.player = this.add.sprite(this.playerX, 500, 'player-placeholder');
     this.player.setOrigin(0.5, 1);
+
+    // Add "P" label on the sprite
+    const pLabel = this.add.text(this.playerX, 500 - frameHeight / 2, 'P', {
+      fontSize: '48px',
+      fontFamily: 'sans-serif',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4,
+    });
+    pLabel.setOrigin(0.5, 0.5);
+    pLabel.setDepth(100);
+
+    // Add debug text for frame info
+    const debugText = this.add.text(this.playerX, 500 - frameHeight - 5, '[?] idle', {
+      fontSize: '16px',
+      fontFamily: 'monospace',
+      color: '#ffffff',
+      backgroundColor: '#000000',
+      padding: { x: 4, y: 2 },
+    });
+    debugText.setOrigin(0.5, 1);
+    debugText.setDepth(1000);
+
+    // Store references for updates
+    (this.player as any).debugText = debugText;
+    (this.player as any).pLabel = pLabel;
+
+    console.log(`[RoomScene] Created fallback placeholder (${frameWidth}x${frameHeight})`);
   }
 
   /**
@@ -381,13 +517,26 @@ export class RoomScene extends Phaser.Scene {
     if (!this.player) return;
 
     let velocityX = 0;
+    let isMoving = false;
 
     if (this.inputManager.isActionDown('move-left')) {
       velocityX = -this.PLAYER_SPEED;
-      this.player.setFlipX(true);
+      isMoving = true;
+      // Set direction (Character handles flipX internally)
+      if (this.player instanceof Character) {
+        this.player.setDirection('left');
+      } else {
+        this.player.setFlipX(true);
+      }
     } else if (this.inputManager.isActionDown('move-right')) {
       velocityX = this.PLAYER_SPEED;
-      this.player.setFlipX(false);
+      isMoving = true;
+      // Set direction (Character handles flipX internally)
+      if (this.player instanceof Character) {
+        this.player.setDirection('right');
+      } else {
+        this.player.setFlipX(false);
+      }
     }
 
     // Update position
@@ -395,6 +544,87 @@ export class RoomScene extends Phaser.Scene {
     this.playerX = Phaser.Math.Clamp(this.playerX, this.ROOM_BOUNDS.left, this.ROOM_BOUNDS.right);
 
     this.player.setX(this.playerX);
+
+    // Update animation based on movement state
+    if (this.player instanceof Character) {
+      if (isMoving) {
+        this.player.playAnimation('walk');
+      } else {
+        this.player.playAnimation('idle');
+      }
+    }
+
+    // Update fallback animation simulation
+    this.updateFallbackAnimation(delta, isMoving ? 'walk' : 'idle');
+
+    // Update fallback elements if they exist
+    const debugText = (this.player as any).debugText as Phaser.GameObjects.Text | undefined;
+    const pLabel = (this.player as any).pLabel as Phaser.GameObjects.Text | undefined;
+
+    if (debugText) {
+      debugText.setX(this.playerX);
+      const currentFrame = this.getFallbackCurrentFrame();
+      debugText.setText(`[${currentFrame}] ${this.fallbackAnimState}`);
+    }
+
+    if (pLabel) {
+      pLabel.setX(this.playerX);
+      // Flip the P label to match player direction
+      pLabel.setFlipX(this.player.flipX);
+    }
+  }
+
+  /**
+   * Simulate animation frame cycling for fallback placeholder
+   */
+  private updateFallbackAnimation(delta: number, newState: string): void {
+    if (!this.playerConfig) return;
+
+    // Reset frame index when animation changes
+    if (newState !== this.fallbackAnimState) {
+      this.fallbackAnimState = newState;
+      this.fallbackFrameIndex = 0;
+      this.fallbackFrameTimer = 0;
+    }
+
+    const animConfig = this.playerConfig.animations[this.fallbackAnimState];
+    if (!animConfig) return;
+
+    // Calculate frame duration in ms
+    const frameDuration = 1000 / animConfig.frameRate;
+
+    // Advance timer
+    this.fallbackFrameTimer += delta;
+
+    // Check if we should advance to next frame
+    if (this.fallbackFrameTimer >= frameDuration) {
+      this.fallbackFrameTimer -= frameDuration;
+      this.fallbackFrameIndex++;
+
+      // Loop or stop based on repeat setting
+      if (this.fallbackFrameIndex >= animConfig.frames.length) {
+        if (animConfig.repeat === -1) {
+          // Loop forever
+          this.fallbackFrameIndex = 0;
+        } else {
+          // Stay on last frame
+          this.fallbackFrameIndex = animConfig.frames.length - 1;
+        }
+      }
+    }
+  }
+
+  /**
+   * Get the current frame number from the YAML animation sequence
+   */
+  private getFallbackCurrentFrame(): number {
+    if (!this.playerConfig) return 0;
+
+    const animConfig = this.playerConfig.animations[this.fallbackAnimState];
+    if (!animConfig || !animConfig.frames.length) return 0;
+
+    const safeIndex = Math.min(this.fallbackFrameIndex, animConfig.frames.length - 1);
+    return animConfig.frames[safeIndex];
   }
 
   /**
@@ -449,7 +679,20 @@ export class RoomScene extends Phaser.Scene {
 
     if (closestHotspot) {
       const id = closestHotspot.getData('id');
-      this.triggerHotspotAction(id);
+
+      // Play interact animation if using Character class
+      if (this.player instanceof Character) {
+        this.player.playAnimation('interact');
+
+        // Listen for animation complete to trigger action
+        this.player.once('animationcomplete', () => {
+          this.triggerHotspotAction(id);
+        });
+      } else {
+        // Fallback: trigger action immediately
+        this.triggerHotspotAction(id);
+      }
+
       this.audioManager.playSfx('ui-click');
     }
   }

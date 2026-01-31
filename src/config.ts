@@ -28,4 +28,13 @@ export const config = {
     const path = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
     return base + path;
   },
+
+  /**
+   * Get full path for an asset file
+   */
+  assetPath(relativePath: string): string {
+    const base = this.basePath.endsWith('/') ? this.basePath : this.basePath + '/';
+    const path = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+    return base + path;
+  },
 };

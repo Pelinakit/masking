@@ -6,6 +6,7 @@
 
 import Phaser from 'phaser';
 import { StateManager } from '@game/StateManager';
+import { Character, type CharacterConfig } from '@presentation/components/Character';
 
 export interface MaskType {
   id: string;
@@ -120,6 +121,10 @@ export class MeetingScene extends Phaser.Scene {
   private eventContainer!: Phaser.GameObjects.Container;
   private currentMaskDisplay!: Phaser.GameObjects.Container;
 
+  // Participant character sprites
+  private participantCharacters: Map<string, Character> = new Map();
+  private characterConfigs: CharacterConfig[] = [];
+
   constructor() {
     super({ key: 'MeetingScene' });
   }
@@ -131,6 +136,9 @@ export class MeetingScene extends Phaser.Scene {
 
   create(): void {
     this.stateManager = new StateManager();
+
+    // Load character configs from registry
+    this.characterConfigs = this.registry.get('characterConfigs') as CharacterConfig[] || [];
 
     const { width, height } = this.cameras.main;
 
@@ -152,13 +160,16 @@ export class MeetingScene extends Phaser.Scene {
    */
   private createVideoGrid(): void {
     this.videoGridContainer = this.add.container(0, 0);
+    this.participantCharacters.clear();
 
     const { width } = this.cameras.main;
     const participants = this.meetingData?.participants || [];
-    const gridWidth = width - 40;
     const videoWidth = 200;
     const videoHeight = 150;
     const spacing = 20;
+
+    // Get accessibility settings
+    const accessibilitySettings = this.stateManager.getAccessibilitySettings();
 
     participants.forEach((participant, index) => {
       const x = 20 + (index % 3) * (videoWidth + spacing);
@@ -168,11 +179,40 @@ export class MeetingScene extends Phaser.Scene {
       const videoBg = this.add.rectangle(x, y, videoWidth, videoHeight, 0x2c3e50);
       videoBg.setOrigin(0);
 
-      // Participant icon (placeholder - would be sprite/avatar)
-      const icon = this.add.text(x + videoWidth / 2, y + videoHeight / 2 - 20, this.getParticipantIcon(participant), {
-        fontSize: '48px',
-      });
-      icon.setOrigin(0.5);
+      // Try to find character config for this participant
+      // Match by participant name containing character id (e.g., "Bark Thompson" -> "boss-chihuahua")
+      const charConfig = this.findCharacterConfig(participant.name);
+
+      if (charConfig) {
+        // Create Character sprite for participant
+        const character = new Character(
+          this,
+          x + videoWidth / 2,
+          y + videoHeight / 2 + 20,
+          charConfig,
+          accessibilitySettings
+        );
+        character.setOrigin(0.5, 0.5);
+        // Scale to fit in video box
+        const scale = Math.min(
+          (videoWidth * 0.6) / charConfig.spritesheet.frameWidth,
+          (videoHeight * 0.6) / charConfig.spritesheet.frameHeight
+        );
+        character.setScale(scale);
+
+        this.participantCharacters.set(participant.name, character);
+        this.videoGridContainer.add(character);
+      } else {
+        // Fallback to emoji icon
+        const icon = this.add.text(
+          x + videoWidth / 2,
+          y + videoHeight / 2 - 20,
+          this.getParticipantIcon(participant),
+          { fontSize: '48px' }
+        );
+        icon.setOrigin(0.5);
+        this.videoGridContainer.add(icon);
+      }
 
       // Name tag
       const nameTag = this.add.rectangle(x, y + videoHeight - 30, videoWidth, 30, 0x000000, 0.7);
@@ -185,8 +225,17 @@ export class MeetingScene extends Phaser.Scene {
       });
       nameText.setOrigin(0, 0.5);
 
-      this.videoGridContainer.add([videoBg, icon, nameTag, nameText]);
+      this.videoGridContainer.add([videoBg, nameTag, nameText]);
     });
+  }
+
+  /**
+   * Find character config by participant name
+   */
+  private findCharacterConfig(participantName: string): CharacterConfig | undefined {
+    // Look for a character config that matches the participant
+    // This matches on the character's name property
+    return this.characterConfigs.find((config) => config.name === participantName);
   }
 
   /**
@@ -319,6 +368,9 @@ export class MeetingScene extends Phaser.Scene {
     this.eventContainer.removeAll(true);
     this.eventContainer.setVisible(true);
 
+    // Update participant animations - speaker talks, others idle
+    this.updateParticipantAnimations(event.speaker);
+
     const { width, height } = this.cameras.main;
 
     // Event background
@@ -392,9 +444,26 @@ export class MeetingScene extends Phaser.Scene {
     // Show consequence
     console.log(choice.consequence);
 
+    // Reset all participants to idle
+    this.updateParticipantAnimations(null);
+
     // Continue meeting
     this.eventContainer.setVisible(false);
     this.progressMeeting();
+  }
+
+  /**
+   * Update participant animations based on who is speaking
+   * @param speakerName Name of the current speaker, or null for all idle
+   */
+  private updateParticipantAnimations(speakerName: string | null): void {
+    this.participantCharacters.forEach((character, name) => {
+      if (speakerName && name === speakerName) {
+        character.playAnimation('talk');
+      } else {
+        character.playAnimation('idle');
+      }
+    });
   }
 
   /**

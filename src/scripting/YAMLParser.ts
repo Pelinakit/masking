@@ -7,6 +7,11 @@ import { load } from 'js-yaml';
 import type { StatName } from '@game/systems/StatSystem';
 import type { MaskType } from '@game/StateManager';
 import { config } from '../config';
+import { characterParser } from './parsers/CharacterParser';
+import type { CharacterConfig } from '@presentation/components/Character';
+
+// Re-export character types for convenience
+export type { CharacterConfig, AnimationConfig, CharacterAccessibility } from '@presentation/components/Character';
 
 // Scene Script Types
 export interface SceneHotspot {
@@ -215,6 +220,21 @@ export class YAMLParser {
     } catch (error) {
       throw new Error(`Failed to parse meeting YAML: ${error}`);
     }
+  }
+
+  /**
+   * Parse a character script
+   */
+  parseCharacter(yamlContent: string): CharacterConfig {
+    return characterParser.parse(yamlContent);
+  }
+
+  /**
+   * Load and parse a character config from path
+   */
+  async loadCharacter(path: string, bypassCache: boolean = false): Promise<CharacterConfig> {
+    const content = await this.loadFile(path, bypassCache);
+    return this.parseCharacter(content);
   }
 
   /**

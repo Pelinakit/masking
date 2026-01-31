@@ -1,0 +1,42 @@
+# Player Character - Orange Tabby Cat
+# Spritesheet layout: horizontal strip, 11 frames total
+# Frame 0-2: idle animation (breathing)
+# Frame 3-5: walk animation (left foot, right foot, left foot)
+# Frame 6-7: talk animation (mouth open, closed)
+# Frame 8-10: interact animation (reach, grab, pull back)
+
+id: player-cat
+name: Player Cat
+species: cat
+
+spritesheet:
+  path: assets/sprites/characters/player-cat.png
+  frameWidth: 64
+  frameHeight: 128
+
+animations:
+  idle:
+    frames: [0, 1, 2, 1] # Subtle breathing loop
+    frameRate: 2
+    repeat: -1
+
+  walk:
+    frames: [3, 4, 5, 4] # Walk cycle
+    frameRate: 8
+    repeat: -1
+
+  talk:
+    frames: [6, 7, 6] # Mouth movement
+    frameRate: 4
+    repeat: -1
+
+  interact:
+    frames: [8, 9, 10] # Reach, grab, pull back
+    frameRate: 6
+    repeat: 0 # Play once
+
+defaultAnimation: idle
+
+accessibility:
+  reducedMotionStaticFrame: 0
+  description: "Orange tabby cat with green eyes, the player character"

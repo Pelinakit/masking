@@ -37,6 +37,12 @@ export interface RelationshipState {
   npcs: Record<string, number>; // NPC ID -> affinity (0-100)
 }
 
+export interface AccessibilitySettings {
+  reducedMotion: boolean;
+  animationSpeed: number; // 0.5, 1.0, or 1.5
+  screenReaderAnnouncements: boolean;
+}
+
 export interface SaveData {
   version: string;
   timestamp: number;
@@ -51,6 +57,7 @@ export interface SaveData {
     audioVolume: number;
     sfxVolume: number;
     cvdMode: boolean;
+    accessibility: AccessibilitySettings;
   };
 }
 
@@ -258,6 +265,11 @@ export class StateManager {
       this.relationships = saveData.relationships || this.getDefaultRelationshipState();
       this.settings = saveData.settings || this.getDefaultSettings();
 
+      // Ensure accessibility settings exist (for older saves)
+      if (!this.settings.accessibility) {
+        this.settings.accessibility = this.getDefaultAccessibilitySettings();
+      }
+
       // Restore systems
       if (saveData.stats) {
         this.stats.importState(saveData.stats);
@@ -365,7 +377,73 @@ export class StateManager {
       audioVolume: 0.7,
       sfxVolume: 0.8,
       cvdMode: false,
+      accessibility: this.getDefaultAccessibilitySettings(),
     };
+  }
+
+  /**
+   * Default accessibility settings (with system preference detection)
+   */
+  private getDefaultAccessibilitySettings(): AccessibilitySettings {
+    // Detect system preference for reduced motion
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+    return {
+      reducedMotion: prefersReducedMotion || false,
+      animationSpeed: 1.0,
+      screenReaderAnnouncements: true,
+    };
+  }
+
+  /**
+   * Get accessibility settings
+   */
+  getAccessibilitySettings(): AccessibilitySettings {
+    return { ...this.settings.accessibility };
+  }
+
+  /**
+   * Update accessibility settings
+   */
+  updateAccessibilitySettings(partial: Partial<AccessibilitySettings>): void {
+    this.settings.accessibility = { ...this.settings.accessibility, ...partial };
+  }
+
+  /**
+   * Setup system preference listeners
+   * Call this once during game initialization
+   */
+  setupAccessibilityListeners(): void {
+    if (typeof window === 'undefined' || !window.matchMedia) {
+      return;
+    }
+
+    // Listen for system reduced motion preference changes
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    mediaQuery.addEventListener('change', (e) => {
+      // Only update if user hasn't manually overridden
+      // (We assume if they set it manually, we should respect that)
+      console.log('[StateManager] System reduced motion preference changed:', e.matches);
+      // Emit an event for other systems to respond
+      this.emitAccessibilityChange('reducedMotion', e.matches);
+    });
+  }
+
+  /**
+   * Emit accessibility change event
+   * Other systems can listen for this to update their behavior
+   */
+  private emitAccessibilityChange(setting: string, value: boolean | number): void {
+    // Use a custom event for cross-system communication
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('accessibility-change', {
+          detail: { setting, value },
+        })
+      );
+    }
   }
 
   /**
