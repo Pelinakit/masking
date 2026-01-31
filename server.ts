@@ -52,6 +52,26 @@ async function build() {
     cpSync('./assets', './dist/assets', { recursive: true });
   }
 
+  // Build speech-gen for browser
+  mkdirSync('./dist/speech-gen', { recursive: true });
+  const speechGenResult = await Bun.build({
+    entrypoints: ['./tools/speech-gen/browser.ts'],
+    outdir: './dist/speech-gen',
+    minify: false,
+    sourcemap: 'external',
+    target: 'browser',
+    naming: 'speech-gen.js',
+  });
+
+  if (!speechGenResult.success) {
+    console.error('Speech-gen build failed:', speechGenResult.logs);
+    return false;
+  }
+
+  // Copy speech-gen HTML
+  const speechGenHtml = await Bun.file('./tools/speech-gen/index.html').text();
+  await Bun.write('./dist/speech-gen/index.html', speechGenHtml);
+
   return true;
 }
 
@@ -107,9 +127,11 @@ const server = Bun.serve({
       });
     }
 
-    // Default to index.html
+    // Default to index.html for root or directories
     if (pathname === '/' || pathname === '') {
       pathname = '/index.html';
+    } else if (pathname.endsWith('/')) {
+      pathname = pathname + 'index.html';
     }
 
     // In dev mode, serve data files from public first (for live YAML editing)

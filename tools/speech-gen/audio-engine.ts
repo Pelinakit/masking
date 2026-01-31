@@ -273,17 +273,20 @@ function calculateProsody(
   // Sentence intonation
   const position = analysis.indexInSentence / Math.max(1, analysis.sentenceLength - 1);
 
+  // Scale intonation by emotion's expressiveness (sad/tired = flatter)
+  const intonationScale = emotionConfig.pitchVariation;
+
   if (analysis.isQuestion) {
-    // Rising intonation for questions
+    // Rising intonation for questions (reduced for sad/tired emotions)
     if (position > 0.5) {
-      pitch *= 1.0 + (0.18 * ((position - 0.5) / 0.5));
+      pitch *= 1.0 + (0.18 * intonationScale * ((position - 0.5) / 0.5));
     }
   } else {
     // Falling intonation for statements
     if (position < 0.2) {
-      pitch *= 1.0 + (0.06 * (1 - position / 0.2));
+      pitch *= 1.0 + (0.06 * intonationScale * (1 - position / 0.2));
     } else if (position > 0.7) {
-      pitch *= 1.0 - (0.12 * ((position - 0.7) / 0.3));
+      pitch *= 1.0 - (0.12 * intonationScale * ((position - 0.7) / 0.3));
     }
   }
 

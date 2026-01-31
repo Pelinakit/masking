@@ -13,7 +13,14 @@
       "Bash(bun add:*)",
       "Bash(pkill:*)",
       "Bash(lsof:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "WebFetch(domain:people.ict.usc.edu)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:pmc.ncbi.nlm.nih.gov)",
+      "WebFetch(domain:acoustics.org)"
     ]
   }
 }

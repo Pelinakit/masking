@@ -1,77 +1,69 @@
 # Current Story
 
 ## User Story
-As a game developer/graphics artist, I want a sprite sheet animation system for characters so that I can easily plug in graphics with various animation types.
+As a game developer, I want a talking sound generator service that produces character-specific syllabic speech sounds (like Animal Crossing/Undertale) so that characters have voice-like personality during dialogue.
 
 ## Acceptance Criteria
-- [x] Characters support sprite sheets with multiple animation states (idle, walk, talk, interact)
-- [x] YAML config defines: spritesheet path, frame dimensions, playback speeds per animation type
-- [x] YAML config specifies frame ranges for each animation state
-- [x] Characters are left-facing in assets, mirrored in-game when facing right
-- [x] System works for player, NPCs, and other entities
-- [x] Graphics artist can plug in new spritesheets without code changes
+- [x] Generates syllable-based speech sounds from input text
+- [x] Supports different emotional tones: bubbly/joyous, sad/slow, stern/agitated, angry, snoring, giggling, laughing
+- [x] Matches sentence rhythm with rising/falling intonation
+- [x] Works as standalone CLI tool for prototyping
+- [ ] Integrable as a service that runs parallel to game events (Phase 2)
+- [x] Different phoneme bases per character (bweh, buh, pip, meh sounds)
 
 ## Technical Context
 
-### Current Architecture
-- Phaser 3 + TypeScript + Bun
-- Data-driven design with YAML scripts
-- Player currently uses a placeholder rectangle sprite (`RoomScene.ts:247-257`)
-- NPCs defined in YAML with portrait references (`npcs/boss-chihuahua.yaml`)
-- No current animation system in place
+### Existing Infrastructure
+- AudioManager handles music and SFX with Phaser.Sound
+- Character component has animation states including 'talk'
+- Bun runtime available for CLI tooling
+- Four-layer architecture (Core, Game Logic, Scripting, Presentation)
 
-### Relevant Files
-- `src/presentation/scenes/RoomScene.ts` - Player sprite creation
-- `src/presentation/scenes/MeetingScene.ts` - Participant display
-- `public/data/stories/npcs/*.yaml` - NPC definitions
-- `public/data/stories/scenes/*.yaml` - Scene definitions
-
-### YAML Pattern Examples
-Current NPC YAML structure:
-```yaml
-id: boss-chihuahua
-name: Bark Thompson
-species: dog
-role: Manager
-portrait: boss-chihuahua-portrait
-```
-
-Current Scene YAML structure:
-```yaml
-id: home
-name: Your Apartment
-background: home-interior
-hotspots:
-  - id: bed
-    x: 50
-    y: 400
-```
-
-## Status
-- Created: 2026-01-31
-- Completed: 2026-01-31
-- Phase: done
+### Design Requirements
+- Service must be scene-independent (can be used from any context)
+- Must not block the main thread during sound generation
+- Should integrate with existing audio settings (volume, enabled/disabled)
 
 ## Implementation Summary
 
-### New Files Created
-- `src/presentation/components/Character.ts` - Character class with animation support
-- `src/scripting/parsers/CharacterParser.ts` - YAML parser for character configs
-- `public/data/characters/player-cat.yaml` - Player character config
-- `public/data/characters/boss-chihuahua.yaml` - NPC character config
+### Phase 1: CLI Prototype (COMPLETE)
 
-### Modified Files
-- `src/presentation/scenes/BootScene.ts` - Loads character configs and creates animations
-- `src/presentation/scenes/RoomScene.ts` - Uses Character class for player
-- `src/presentation/scenes/MeetingScene.ts` - Uses Character class for participants
-- `src/scripting/YAMLParser.ts` - Added parseCharacter() and loadCharacter() methods
-- `src/game/StateManager.ts` - Added accessibility settings (reducedMotion, animationSpeed)
-- `src/config.ts` - Added assetPath() method
+**New Files Created:**
+- `tools/speech-gen/cli.ts` - CLI entry point with argument parsing
+- `tools/speech-gen/types.ts` - TypeScript interfaces, voice/emotion configs
+- `tools/speech-gen/syllable-parser.ts` - Text-to-syllable parsing
+- `tools/speech-gen/audio-engine.ts` - Oscillator synthesis audio generation
+- `tools/speech-gen/wav-writer.ts` - WAV file encoding
+- `tools/speech-gen/README.md` - Documentation
 
-### Features Implemented
-1. **Character Class** - Extends Phaser.GameObjects.Sprite with animation state management
-2. **YAML Configuration** - Artist-friendly config for spritesheets and animations
-3. **Accessibility Support** - Reduced motion mode, animation speed multiplier (0.5x/1.0x/1.5x)
-4. **Hot Reload** - Characters reload when YAML is refreshed in dev mode
-5. **Placeholder Generation** - Auto-generates colored placeholders when sprites not found
-6. **Direction Mirroring** - Characters auto-flip when facing right
+**Modified Files:**
+- `package.json` - Added `speech-gen` npm script
+
+**Features Implemented:**
+1. **Syllable Parser** - Vowel-cluster heuristic for syllable detection
+2. **Sentence Detection** - Detects `.!?` boundaries for intonation
+3. **4 Voice Types** - bweh (300Hz), buh (200Hz), pip (600Hz), meh (250Hz)
+4. **8 Emotional Tones** - neutral, bubbly, sad, stern, angry, snoring, giggling, laughing
+5. **Intonation** - Pitch rises at sentence start, falls at end
+6. **WAV Export** - Save generated audio to file
+7. **Audio Playback** - Uses system audio player (afplay on macOS)
+
+**Usage:**
+```bash
+bun run speech-gen --text "Hello there!" --voice pip --emotion bubbly
+bun run speech-gen -t "I'm sad..." -v buh -e sad -o output.wav
+bun run speech-gen -t "Test" --info  # Show parsing info
+```
+
+### Phase 2: Game Integration (PENDING)
+- [ ] Create `src/game/systems/TalkingSoundManager.ts`
+- [ ] Port audio engine to work with Phaser's AudioContext
+- [ ] Add voice configuration to character YAML
+- [ ] Integrate with DialogueBox component
+- [ ] Add voiceVolume/voiceEnabled to AudioManager settings
+- [ ] Per-character voice muting (accessibility)
+
+## Status
+- Created: 2026-01-31
+- Phase 1 Completed: 2026-01-31
+- Phase: Phase 1 complete, Phase 2 pending

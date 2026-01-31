@@ -113,10 +113,10 @@ export const VOICE_CONFIGS: Record<VoiceType, SyllableConfig> = {
     waveform: 'sine',
   },
   meh: {
-    duration: 150,
-    pitchBase: 250,
-    pitchVariation: 20,
-    waveform: 'sawtooth',
+    duration: 130,
+    pitchBase: 180,
+    pitchVariation: 8,
+    waveform: 'sine',
   },
 };
 
@@ -155,10 +155,10 @@ export const EMOTION_CONFIGS: Record<EmotionalTone, EmotionConfig> = {
   // Sad - research shows similar pitch, but slower, quieter, more pauses, flat
   sad: {
     pitchMultiplier: 0.95,    // Slightly lower (not dramatically)
-    tempoMultiplier: 0.65,    // Much slower
+    tempoMultiplier: 0.8,     // Slower but not dragging
     volumeMultiplier: 0.7,    // Quieter
-    pitchVariation: 0.5,      // Flat, monotone - key indicator of sadness
-    pauseMultiplier: 1.8,     // Longer pauses - hesitant, low energy
+    pitchVariation: 0.2,      // Very flat, monotone - key indicator of sadness
+    pauseMultiplier: 1.4,     // Longer pauses - hesitant, low energy
     staccato: false,
     breathiness: 0.4,         // Softer, breathier quality
     rhythmic: false,

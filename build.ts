@@ -58,13 +58,41 @@ if (existsSync('./assets')) {
   cpSync('./assets', './dist/assets', { recursive: true });
 }
 
+// Bundle speech-gen for browser
+console.log('🔊 Building speech-gen...');
+mkdirSync('./dist/speech-gen', { recursive: true });
+
+const speechGenResult = await Bun.build({
+  entrypoints: ['./tools/speech-gen/browser.ts'],
+  outdir: './dist/speech-gen',
+  minify: isProduction,
+  sourcemap: isProduction ? 'none' : 'external',
+  target: 'browser',
+  naming: 'speech-gen.js',
+});
+
+if (!speechGenResult.success) {
+  console.error('❌ Speech-gen build failed:');
+  for (const log of speechGenResult.logs) {
+    console.error(log);
+  }
+  process.exit(1);
+}
+
+// Copy speech-gen HTML (update paths for production)
+const speechGenHtml = await Bun.file('./tools/speech-gen/index.html').text();
+const updatedSpeechGenHtml = speechGenHtml
+  .replace('href="./"', `href="${basePath}"`)
+  .replace('src="./speech-gen.js"', 'src="./speech-gen.js"');
+await Bun.write('./dist/speech-gen/index.html', updatedSpeechGenHtml);
+
 console.log('✅ Build complete!');
 console.log(`   Output: ./dist/`);
 
 // List output files
-const outputs = result.outputs.map(o => o.path);
-for (const output of outputs) {
-  const file = Bun.file(output);
+const allOutputs = [...result.outputs, ...speechGenResult.outputs];
+for (const output of allOutputs) {
+  const file = Bun.file(output.path);
   const size = (await file.size) / 1024;
-  console.log(`   ${output.replace(process.cwd(), '.')} (${size.toFixed(1)} KB)`);
+  console.log(`   ${output.path.replace(process.cwd(), '.')} (${size.toFixed(1)} KB)`);
 }
