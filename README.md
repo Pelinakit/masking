@@ -2,7 +2,20 @@
 
 ## Overview
 
-Masking is a game where you navigate through life's challenges by thoughtfully managing your energy levels.
+Masking is a game where you navigate through life's challenges by thoughtfully managing your energy levels. You play as a cat navigating a world of dogs in a remote work setting — a metaphor for the neurodivergent experience of trying to fit in.
+
+## Theme & Setting
+
+**You are a cat in a dog's world.**
+
+The player character is a cat working remotely in an office job where everyone else is a dog. This serves as a visual metaphor for neurodivergence:
+
+- **Cats** = Neurodivergent individuals (the player)
+- **Dogs** = Neurotypical coworkers (various breeds represent different personality types)
+- **Boss** = Chihuahua (small but yappy and demanding)
+- **Other coworkers** = Different dog breeds matching their personalities (e.g., golden retrievers as kind but overly enthusiastic)
+
+The visual style is a **Sims-inspired parody** — think single-screen room view with stat bars, similar UI language, possibly even Comic Sans-adjacent fonts for that authentic Sims 2 vibe.
 
 ## What is masking
 
@@ -60,25 +73,51 @@ Understanding masking is critical for anyone committed to DEI. By raising awaren
 ## Design Guidelines
 
 - Single-player game
-- Side-scrolling real-time with pause
+- **Single-screen room view** (Sims-style), real-time with pause
 - Scene-based, reactive situational challenges
-- Each scene has a unique set of challenges and rewards
-  - Work in general
-    - Work must get done at a sufficient level to meet deadlines
-    - Must organize tasks and projects to stay on track and to leave rest gaps for recovery
-    - Cumulative contiguous time in meetings and work has an increasing energy cost
-    - May strategically skip meetings or tasks to leave rest gaps for recovery instead
-    - May take sick-days to recover from energy depletion
-    - Decision-making is a major energy cost and may be the single largest energy cost of all
-  - Work from home specifically
-    - Must mask to protect energy levels during online meetings
-    - Must break for lunch manually and break to recover between meetings
-    - Pet cat and dog interactions soothe and replenish energy levels
-    - Working from home enables a greater degree of autonomy and flexibility in work scheduling and rest breaks
-  - Work from office
-    - Lunch breaks are scheduled for you automatically and gets to chat with colleagues to recover energy levels (if social masking is active)
-    - Interruptions by colleagues may replenish or drain energy levels depending on the nature of the interruption, the current mood and masking state and always at the cost of work progress
-    - Working from office is conducive to consistent rhythm of work and rest because of group lunch and breaks and less decisions to make about what to do next
+- **Remote work only** (scope decision — office expansion possible post-jam)
+
+### Stats / Bars
+
+The player must manage multiple stats throughout the day:
+
+| Stat | Description |
+|------|-------------|
+| **Energy** | Core resource. Depleted by work, meetings, decisions. Restored by rest, naps, food. |
+| **Stress** | Accumulates from tasks, deadlines, social interactions. High stress = bad outcomes. |
+| **Hunger** | Must eat to maintain other stats. Can order Catdora (costs money, adds stress). |
+| **Happiness** | Affected by activities, interactions, success/failure. Low happiness = lower energy recovery. |
+| **Social Anxiety** | Spikes during meetings, calls, and interactions. Some positive interactions also raise it (e.g., flirting). |
+
+### Work Challenges
+
+- Work must get done at a sufficient level to meet deadlines
+- Each day, **3-5 random tasks** are assigned (roguelike potential for difficulty scaling)
+- Cumulative contiguous time in meetings and work has an increasing energy cost
+- May strategically skip meetings or tasks to leave rest gaps for recovery
+- May take sick-days to recover from energy depletion
+- Decision-making is a major energy cost and may be the single largest energy cost of all
+
+### Remote Work Dynamics
+
+- Must mask to protect energy levels during online meetings (Zoomie calls = "battle scenes")
+- Must break for lunch manually and break to recover between meetings
+- Mid-work naps are possible (a perk of working from home!)
+- Working from home enables autonomy and flexibility in work scheduling and rest breaks
+
+## Masks (Battle Stances)
+
+Masks function like **battle stances** in RPGs — different modes for different social situations. Each mask has different energy costs and effectiveness depending on context:
+
+| Mask | Use Case | Energy Cost |
+|------|----------|-------------|
+| **Meeting Participant** | Online meetings, listening mode | Low |
+| **Presenter** | Presentations, leading discussions | High |
+| **Casual Colleague** | Chatting with coworkers | Medium |
+| **Careful Subordinate** | Talking to the boss | Medium-High |
+| **Professional Client-Facer** | Customer/client interactions | Very High |
+
+Wearing the wrong mask for a situation causes additional stress and energy drain. Wearing no mask in professional situations has consequences but may be necessary when energy is critically low.
 
 ## Gameplay
 
@@ -86,24 +125,99 @@ Understanding masking is critical for anyone committed to DEI. By raising awaren
 
 - Uses a 24-hour clock
 - Optional tutorial Sunday
-  - Starts in the player character's home (simple cut-out of a house with a bed, a table with a laptop and a chair, small kitchenette, a cat and a dog, food bowls on the floor and a door to outside to the right)
+  - Starts in the player character's home (single-screen room with: bed, desk with laptop, kitchenette, cozy rug/mat, door to outside)
   - Day starts on a Sunday morning at 09:00
-  - Shows controls and explain elements of the game in a simple and easy to understand sequence
-    - Move left and right indicated as gently pulsating red arrows with "A" and "D" inside them respectively on either side of the player character who is in the middle
+  - Shows controls and explains elements of the game in a simple and easy to understand sequence
+    - Move left and right indicated as gently pulsating arrows with "A" and "D" inside them respectively on either side of the player character (a cat) who is in the middle
       - Movement tutorial arrows disappear after the player has moved a few steps
-    - Pulsating red arrow pointing at the kitchen counter with "E" inside it to indicate that the player should move over to it and press "E" to prepare and eat breakfast
+    - Pulsating arrow pointing at the kitchen counter with "E" inside it to indicate that the player should move over to it and press "E" to prepare and eat breakfast
       - Eating breakfast tutorial arrow disappears after the player has eaten breakfast
-    - Pulsating red arrow pointing at the laptop with "E" inside it to indicate that the player should move over to it and press "E" to open the laptop
-      - The arrow clears off and the laptop screen appears with a list of things the player can do on the laptop (check email, check calendar, check tasks, play solitaire (fun and relaxing for the player character and the player))
-      - Opening the email reveals that there is a single new message from your cat reminding you to buy his favorite food and telling on the dog for chewing on the cat's favorite toy
-    - The tutorial can be ended by either walking to the door on the right and pressing "E" to take your pets for a walk or by pressing the ESC button to open the menu and selecting "End tutorial" or by over to the bed and pressing "E" to sleep until the next day
+    - Pulsating arrow pointing at the laptop with "E" inside it to indicate that the player should move over to it and press "E" to open the laptop
+      - The arrow clears off and the laptop screen appears with options (see Laptop section below)
+    - The tutorial can be ended by walking to the door or going to bed to sleep until Monday
 - ESC always closes the current top-most UI layer (e.g., from email to laptop to gameplay). This is shown as a permanent UI element ESC button in the top left corner of the screen with a relevant context text, e.g., "Close email" or "Close laptop" or "Menu" (when in gameplay) or "Back to game" (when in menu)
 - All interactable objects will show the "E" key as a UI element when the player is close enough to it (approximately 1 meter in-game) as a gray button with the relevant key and context text. Menus and interactable screens (e.g., laptop and everything in it) can be navigated using WASD or arrow keys, gamepad or mouse. Using mouse to hover on elements shows the mouse cursor as a hand for interactions, speech bubble for talking to characters, walking stick figure for walking, etc.
 - The control scheme used last takes precedence over the others in the UI elements and tips. (If controller is used, tutorial or gameplay won't show keyboard controls in tips or UI elements and vice versa)
 
+### Laptop
+
+The laptop is the central hub for work and distractions. Opens as a separate screen overlay.
+
+**Work Functions:**
+
+- **Email** — Check messages from boss, coworkers, clients
+- **Calendar** — View scheduled meetings and deadlines
+- **Tasks** — Today's work tasks that need completing
+- **Zoom Calls** — Initiates "battle scene" meetings
+
+**Personal Functions:**
+
+- **Catdora** — Food delivery app. Costs money but saves time/energy. Ordering adds stress (spending anxiety!)
+- **Chat** — Message coworkers. Potential romance subplot with a coworker (flirting = happiness +50, social anxiety +50)
+- **Solitaire** — Relaxing mini-game, restores small amount of happiness
+- **Hidden mini-game** — Like Chrome's dinosaur game when there's no internet. Easter egg for players to discover
+
+### Zoom Calls ("Battle Scenes")
+
+When joining a meeting, the view zooms to show:
+
+- The player character (cat) in their video feed box
+- Other participants (dogs) in their boxes
+- Current mask selection
+- Active stat bars
+
+The player must:
+
+- Choose appropriate mask for the meeting type
+- Manage energy/stress during the call
+- Potentially present, respond to questions, or just survive
+
+### Social Interactions
+
+**Coworkers:**
+
+- Can chat via laptop during work
+- Different dog breeds = different personalities and interaction dynamics
+- One coworker may flirt with the player (romance subplot potential)
+
+**Boss (Chihuahua):**
+
+- Demanding, expects responsiveness
+- Requires "Careful Subordinate" mask
+- High stress interactions
+
+### Characters
+
+**Player Character:** A cat. Neurodivergent, works remotely, trying to survive the workweek.
+
+**NPCs (all dogs?):**
+
+| Character | Breed | Role | Notes |
+|-----------|-------|------|-------|
+| Boss | Chihuahua | Manager | Small but demanding, yappy |
+| Coworker A | Golden Retriever | Colleague | Overly enthusiastic, all-over-the-place |
+| Coworker B | TBD | Colleague | Potential romance interest |
+| Customer Service | TBD | Support role | |
+| Client | TBD | Complex multi-phase task giver | |
+
+*More characters to be defined as scripting progresses.*
+
+### Room Layout (Home)
+
+Single-screen view containing:
+
+- **Bed** — Sleep to end day, recover stats overnight
+- **Desk + Laptop** — Central work hub
+- **Kitchenette** — Prepare food (cheaper than Catdora, costs time/energy)
+- **Cozy mat/rug** — Rest spot? Nap location?
+- **Door** — Exit (future expansion potential)
+
+Hotspots are defined with coordinates for click/interaction zones.
+
 ### Graphical style and animations
 
 - 2D hand-drawn
+- **Sims-inspired parody aesthetic** — UI bars, room view, possibly Comic Sans-adjacent fonts
 - Low amount of animation frames (1-3 frames per animation)
 - Simple, clear, accessible and recognizable graphics
 - Supports CVD and low-vision players
@@ -174,16 +288,54 @@ The core of the game engine must allow for modularity and extensibility by allow
 
 Scenes, characters and interactions are scripted separately and intuitively in YAML. One script per entity. Can defer to other scripts.
 
-Scene scripts:
+**Scene scripts:**
 
 - Name, hotspots and their interactions, scene transitions or modular windows
 - List of event scripts that can trigger and their special conditions
 
-NPC scripts:
+Example concept:
 
-- Name, location, behavior (reference to separate reusable behavior script), interactions with player, dialogue trees, conditional events, etc.
+```yaml
+# home.yaml
+name: "Player home"
+hotspots:
+  - id: bed
+    coords: [x1, y1, x2, y2]  # bounding box
+    action: sleep_script
+  - id: laptop
+    coords: [x1, y1, x2, y2]
+    action: open_laptop
+  - id: kitchen
+    coords: [x1, y1, x2, y2]
+    action: prepare_food
+```
 
-Management script:
+**NPC scripts:**
+
+- Name, species, role, location, behavior, interactions with player, dialogue trees, likes/dislikes, conditional events
+
+Example concept:
+
+```yaml
+# dog.yaml
+name: "Steve-dog"
+species: "dog"
+breed: "golden retriever"
+role: "colleague"
+interactions:
+  - chat_casual
+  - chat_work
+likes:
+  - "coffee"
+  - "weekend"
+  - "teamwork"
+dislikes:
+  - "silence"
+  - "solo work"
+animation_frames: "golden_retriever_spritesheet.png"
+```
+
+**Management script:**
 
 - Read by game state manager
 - Can be updated forcing a reread without restarting game
