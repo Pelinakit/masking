@@ -228,11 +228,16 @@ export class RoomScene extends Phaser.Scene {
    */
   private async loadSceneData(): Promise<void> {
     try {
-      const yamlContent = await yamlParser.loadFile('/data/stories/scenes/home.yaml');
+      // Force bypass cache to get fresh data
+      const yamlContent = await yamlParser.loadFile('/data/stories/scenes/home.yaml', true);
       this.sceneData = yamlParser.parseScene(yamlContent);
-      console.log('Scene data loaded:', this.sceneData);
+      console.log('[RoomScene] Scene data loaded:', this.sceneData);
+      console.log('[RoomScene] Hotspots from YAML:', this.sceneData.hotspots);
+
+      // Refresh hotspots with new data
+      this.refreshHotspots();
     } catch (error) {
-      console.error('Failed to load scene data:', error);
+      console.error('[RoomScene] Failed to load scene data:', error);
     }
   }
 
@@ -252,35 +257,78 @@ export class RoomScene extends Phaser.Scene {
   }
 
   /**
-   * Create hotspots from scene data
+   * Create hotspots from scene data (YAML)
    */
   private createHotspots(): void {
-    const hotspotData = [
-      { id: 'bed', x: 150, y: 450, width: 150, height: 100, label: 'Sleep (E)', color: 0x3498db },
-      { id: 'laptop', x: 500, y: 400, width: 100, height: 80, label: 'Laptop (E)', color: 0x9b59b6 },
-      { id: 'kitchen', x: 750, y: 420, width: 120, height: 100, label: 'Kitchen (E)', color: 0xe67e22 },
-      { id: 'door', x: 900, y: 350, width: 60, height: 180, label: 'Door (E)', color: 0x95a5a6 },
-    ];
+    // Colors for different hotspot types
+    const hotspotColors: Record<string, number> = {
+      bed: 0x3498db,
+      laptop: 0x9b59b6,
+      kitchen: 0xe67e22,
+      door: 0x95a5a6,
+      default: 0x1abc9c,
+    };
+
+    // Use YAML data if available, otherwise use fallback
+    const hotspotData = this.sceneData?.hotspots || [];
+
+    if (hotspotData.length === 0) {
+      console.warn('[RoomScene] No hotspots in scene data, using fallback');
+    }
 
     hotspotData.forEach(data => {
+      const color = hotspotColors[data.id] || hotspotColors.default;
+
       // Hotspot area (semi-transparent for debug visibility)
-      const hotspot = this.add.rectangle(data.x, data.y, data.width, data.height, data.color, 0.3);
-      hotspot.setStrokeStyle(2, data.color, 0.8);
+      const hotspot = this.add.rectangle(
+        data.x + data.width / 2,  // YAML uses top-left, Phaser uses center
+        data.y + data.height / 2,
+        data.width,
+        data.height,
+        color,
+        0.3
+      );
+      hotspot.setStrokeStyle(2, color, 0.8);
       hotspot.setData('id', data.id);
+      hotspot.setData('action', data.action);
       this.hotspots.push(hotspot);
 
       // Interaction prompt (hidden by default)
-      const prompt = this.add.text(data.x, data.y - data.height / 2 - 20, data.label, {
-        fontFamily: 'Comic Relief, sans-serif',
-        fontSize: '16px',
-        color: '#ffffff',
-        backgroundColor: '#000000',
-        padding: { x: 8, y: 4 },
-      });
+      const label = data.label || `${data.id} (E)`;
+      const prompt = this.add.text(
+        data.x + data.width / 2,
+        data.y - 20,
+        label,
+        {
+          fontFamily: 'Comic Relief, sans-serif',
+          fontSize: '16px',
+          color: '#ffffff',
+          backgroundColor: '#000000',
+          padding: { x: 8, y: 4 },
+        }
+      );
       prompt.setOrigin(0.5);
       prompt.setVisible(false);
       this.interactionPrompts.set(data.id, prompt);
     });
+
+    console.log(`[RoomScene] Created ${hotspotData.length} hotspots from YAML`);
+  }
+
+  /**
+   * Clear and recreate hotspots (for YAML reload)
+   */
+  private refreshHotspots(): void {
+    // Destroy existing hotspots
+    this.hotspots.forEach(h => h.destroy());
+    this.hotspots = [];
+
+    // Destroy existing prompts
+    this.interactionPrompts.forEach(p => p.destroy());
+    this.interactionPrompts.clear();
+
+    // Recreate from current scene data
+    this.createHotspots();
   }
 
   /**

@@ -38,13 +38,25 @@ const server = Bun.serve({
       pathname = '/index.html';
     }
 
-    // Try to serve from dist first, then public
+    // In dev mode, serve data files from public first (for live YAML editing)
+    // Otherwise serve from dist first
     const distPath = `./dist${pathname}`;
     const publicPath = `./public${pathname}`;
 
-    let file = Bun.file(distPath);
-    if (!(await file.exists())) {
+    let file: ReturnType<typeof Bun.file>;
+
+    if (isDev && pathname.startsWith('/data/')) {
+      // Serve YAML/data from public first in dev mode
       file = Bun.file(publicPath);
+      if (!(await file.exists())) {
+        file = Bun.file(distPath);
+      }
+    } else {
+      // Serve from dist first for other files
+      file = Bun.file(distPath);
+      if (!(await file.exists())) {
+        file = Bun.file(publicPath);
+      }
     }
     if (!(await file.exists())) {
       // Try index.html for SPA routing
