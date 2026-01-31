@@ -22,7 +22,7 @@
       "@game/*": ["src/game/*"],
       "@scripting/*": ["src/scripting/*"],
       "@presentation/*": ["src/presentation/*"],
-      "@data/*": ["data/*"],
+      "@data/*": ["public/data/*"],
       "@assets/*": ["assets/*"]
     },
 

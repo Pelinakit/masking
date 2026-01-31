@@ -9,7 +9,7 @@ export default defineConfig({
       '@game': path.resolve(__dirname, './src/game'),
       '@scripting': path.resolve(__dirname, './src/scripting'),
       '@presentation': path.resolve(__dirname, './src/presentation'),
-      '@data': path.resolve(__dirname, './data'),
+      '@data': path.resolve(__dirname, './public/data'),
       '@assets': path.resolve(__dirname, './assets'),
     },
   },
