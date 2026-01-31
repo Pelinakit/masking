@@ -108,7 +108,7 @@ Understanding masking is critical for anyone committed to DEI. By raising awaren
 - Simple, clear, accessible and recognizable graphics
 - Supports CVD and low-vision players
 
-### CVD guidelines
+#### CVD guidelines
 
 > Designing for Color Vision Deficiency (CVD), or color blindness, requires moving beyond a "color-only" approach to ensure digital products are usable for everyone. Approximately 1 in 12 men and 1 in 200 women have some form of CVD. Best practices focus on providing redundant, high-contrast, and clearly labeled visual information.
 Here are the key best practices for CVD-friendly UI design:
@@ -150,3 +150,43 @@ Red and Green
 Yellow and Purple
 Blue and Purple
 Red and Black
+
+## Development
+
+### Tools
+
+**Game Engine**: Phaser 3
+Phaser is a (mostly) 2D game engine. Phaser accommodates quick project setup and development cycles without the need for a bespoke toolchain. Language for the project is **TypeScript**.
+
+**Build Tool**: Bun
+
+Bun is a fast, modern runtime and package manager for JavaScript and TypeScript.
+
+**Version Control**: Git
+
+### Engine Design Philosophies
+
+#### Modularity & Extensibility
+
+The core of the game engine must allow for modularity and extensibility by allowing the developers to add new rooms, characters, items, mechanism, interactions, behaviors, rules, etc. without having to modify the core engine, preferably, at all.
+
+#### Scripting
+
+Scenes, characters and interactions are scripted separately and intuitively in YAML. One script per entity. Can defer to other scripts.
+
+Scene scripts:
+
+- Name, hotspots and their interactions, scene transitions or modular windows
+- List of event scripts that can trigger and their special conditions
+
+NPC scripts:
+
+- Name, location, behavior (reference to separate reusable behavior script), interactions with player, dialogue trees, conditional events, etc.
+
+Management script:
+
+- Read by game state manager
+- Can be updated forcing a reread without restarting game
+- Gameplay loop
+- Base rules
+- Scene transitions (reference to scene transition map script)
