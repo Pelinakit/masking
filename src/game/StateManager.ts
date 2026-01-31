@@ -381,4 +381,32 @@ export class StateManager {
       settings: this.settings,
     };
   }
+
+  /**
+   * Get mutable state object (for general access)
+   */
+  getState(): any {
+    return {
+      player: this.player,
+      stats: this.stats.getAllStats(),
+      time: this.time.getTime(),
+      progress: this.progress,
+      relationships: this.relationships,
+      settings: this.settings,
+      tasks: (this as any)._tasks || [],
+      tutorialFlags: (this as any)._tutorialFlags || {},
+    };
+  }
+
+  /**
+   * Set state from object (merges with existing)
+   */
+  setState(state: any): void {
+    if (state.player) this.player = { ...this.player, ...state.player };
+    if (state.progress) this.progress = { ...this.progress, ...state.progress };
+    if (state.relationships) this.relationships = { ...this.relationships, ...state.relationships };
+    if (state.settings) this.settings = { ...this.settings, ...state.settings };
+    if (state.tasks) (this as any)._tasks = state.tasks;
+    if (state.tutorialFlags) (this as any)._tutorialFlags = state.tutorialFlags;
+  }
 }
