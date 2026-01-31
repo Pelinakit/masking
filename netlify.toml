@@ -1,0 +1,16 @@
+[build]
+  publish = "dist"
+  command = "bun install && bun run build"
+
+[build.environment]
+  BUN_VERSION = "latest"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[dev]
+  command = "bun run dev"
+  port = 3000
+  targetPort = 3000
