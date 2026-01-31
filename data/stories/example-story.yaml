@@ -1,0 +1,39 @@
+# Example story structure
+# This demonstrates the YAML format for narrative content
+
+id: example-morning-meeting
+title: "Morning Standup"
+description: "Your first video call of the day"
+startNode: intro
+
+nodes:
+  intro:
+    id: intro
+    text: "Your calendar notification pings. Daily standup in 5 minutes. You adjust your camera and prepare your 'work face.'"
+    choices:
+      - text: "Join with camera on"
+        next: camera-on
+        effects:
+          - stat: masking
+            delta: 10
+          - stat: energy
+            delta: -5
+      - text: "Join with camera off"
+        next: camera-off
+        effects:
+          - stat: stress
+            delta: 5
+
+  camera-on:
+    id: camera-on
+    text: "You smile at the camera as colleagues trickle in. The familiar mental checklist runs: eye contact, nod at appropriate times, maintain neutral expression."
+    effects:
+      - stat: masking
+        delta: 5
+
+  camera-off:
+    id: camera-off
+    text: "Your video tile stays dark. A few seconds later, a message from your manager: 'Hey, would love to see your face! Team bonding :)'"
+    effects:
+      - stat: stress
+        delta: 10

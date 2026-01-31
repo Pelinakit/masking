@@ -1,0 +1,32 @@
+{
+  "currentPhase": "3.4",
+  "status": "adr-pending",
+  "blockers": [],
+  "lastCheckpoint": "2.4",
+  "progressStyle": "inline-persistent",
+  "verbose": false,
+  "project": {
+    "name": "Masking",
+    "type": "green-field",
+    "description": "Sims-inspired game about neurodivergent experiences in remote work",
+    "stack": {
+      "engine": "Phaser 3",
+      "language": "TypeScript",
+      "runtime": "Bun",
+      "bundler": "Vite",
+      "data": "YAML scripts"
+    },
+    "deployment": "static-hosting",
+    "accessibility": ["CVD-friendly", "WCAG-AA"],
+    "stackValidation": "approved",
+    "userDecisions": {
+      "audio": "include-from-start",
+      "saveSystem": "localStorage",
+      "platform": "responsive-mobile-desktop",
+      "font": "Comic Relief",
+      "tutorial": "always-skippable",
+      "difficulty": "single-balanced"
+    },
+    "scaffoldComplete": true
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun init:*)",
+      "Bash(bun install)",
+      "Bash(bun run type-check:*)",
+      "Bash(bun run build)",
+      "Bash(tree:*)",
+      "Bash(git -C /Users/jk/code/masking status --short)",
+      "Bash(git -C /Users/jk/code/masking add:*)"
+    ]
+  }
+}

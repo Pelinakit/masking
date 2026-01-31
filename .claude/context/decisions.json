@@ -1,0 +1,32 @@
+{
+  "decisions": [
+    {
+      "id": "d001",
+      "timestamp": "2026-01-31T00:00:00Z",
+      "phase": "1.5",
+      "summary": "Use Phaser 3 + TypeScript + Bun with YAML-based narrative scripting",
+      "adrNumber": "0001"
+    },
+    {
+      "id": "d002",
+      "timestamp": "2026-01-31T00:10:00Z",
+      "phase": "1.5",
+      "summary": "Four-layer architecture: Core, Game Logic, Script Interpretation, Presentation",
+      "adrNumber": "0002"
+    },
+    {
+      "id": "d003",
+      "timestamp": "2026-01-31T00:20:00Z",
+      "phase": "2.4",
+      "summary": "Comic Relief font, skippable tutorial, single balanced difficulty",
+      "adrNumber": "0003"
+    },
+    {
+      "id": "d004",
+      "timestamp": "2026-01-31T00:30:00Z",
+      "phase": "3.4",
+      "summary": "Vite bundler, path aliases, localStorage persistence, directory structure",
+      "adrNumber": "0004"
+    }
+  ]
+}
