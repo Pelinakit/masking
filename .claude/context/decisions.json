@@ -27,6 +27,13 @@
       "phase": "3.4",
       "summary": "Vite bundler, path aliases, localStorage persistence, directory structure",
       "adrNumber": "0004"
+    },
+    {
+      "id": "d005",
+      "timestamp": "2026-01-31T16:30:00Z",
+      "phase": "5.5",
+      "summary": "GitHub Pages deployment with automated CI/CD via GitHub Actions",
+      "adrNumber": "0005"
     }
   ]
 }
