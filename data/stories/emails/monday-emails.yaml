@@ -1,0 +1,51 @@
+emails:
+  - id: email-001
+    from: "Boss Chihuahua"
+    subject: "Monday Standup - 10am"
+    time: "08:30"
+    read: false
+    body: |
+      Team,
+
+      Just a reminder we have our weekly standup at 10am sharp.
+      Please come prepared with your updates.
+
+      - Boss
+
+  - id: email-002
+    from: "HR Department"
+    subject: "Wellness Check-In"
+    time: "09:00"
+    read: false
+    body: |
+      Hi there,
+
+      How are you doing? We noticed you've been working hard.
+      Remember to take breaks!
+
+      Best,
+      HR Team
+
+  - id: email-003
+    from: "IT Support"
+    subject: "System Maintenance Tonight"
+    time: "09:15"
+    read: false
+    body: |
+      All systems will be down from 11pm-1am tonight for scheduled maintenance.
+      Please save your work before then.
+
+      Thanks,
+      IT
+
+  - id: email-004
+    from: "Coworker Pug"
+    subject: "Re: Project deadline"
+    time: "09:45"
+    read: false
+    body: |
+      Hey! Did you finish your part of the project?
+      I need it by end of day.
+
+      Thanks!
+      Pug

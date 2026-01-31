@@ -1,0 +1,66 @@
+id: boss-chihuahua
+name: Bark Thompson
+species: dog
+role: Manager
+portrait: boss-chihuahua-portrait
+affinity: 50
+
+dialogues:
+  morning-greeting:
+    id: morning-greeting
+    speaker: Bark Thompson
+    text: "Good morning! Ready for today's standup?"
+    next: null
+
+  standup-question:
+    id: standup-question
+    speaker: Bark Thompson
+    text: "So, what are you working on today?"
+    choices:
+      - text: "Finishing the quarterly report."
+        next: standup-response-good
+        effects:
+          - type: relationship
+            target: boss-chihuahua
+            delta: 5
+      - text: "Uh... I need to check my notes."
+        next: standup-response-nervous
+        effects:
+          - type: relationship
+            target: boss-chihuahua
+            delta: -3
+          - type: stat
+            stat: stress
+            delta: 10
+      - text: "Working on optimizing the widget system."
+        next: standup-response-impressive
+        effects:
+          - type: relationship
+            target: boss-chihuahua
+            delta: 10
+          - type: stat
+            stat: happiness
+            delta: 5
+        maskRequirement: presenter
+
+  standup-response-good:
+    id: standup-response-good
+    speaker: Bark Thompson
+    text: "Excellent! Keep up the good work."
+    next: null
+
+  standup-response-nervous:
+    id: standup-response-nervous
+    speaker: Bark Thompson
+    text: "...Please be more prepared next time."
+    next: null
+    effects:
+      - type: stat
+        stat: stress
+        delta: 5
+
+  standup-response-impressive:
+    id: standup-response-impressive
+    speaker: Bark Thompson
+    text: "That's fantastic! Great initiative."
+    next: null

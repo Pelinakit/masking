@@ -1,0 +1,393 @@
+# Monday Full Day Scenario
+# Complete workday with emails, meetings, and tasks
+
+metadata:
+  day: Monday
+  week: 1
+  difficulty: normal
+
+# Morning emails (arrive at different times)
+emails:
+  - id: email-monday-001
+    from: "Boss Chihuahua"
+    subject: "Weekly Standup - 10am TODAY"
+    time: "08:30"
+    priority: high
+    read: false
+    body: |
+      Team,
+
+      Reminder: Weekly standup at 10am sharp.
+      Come prepared with:
+      - What you did last week
+      - What you're doing this week
+      - Any blockers
+
+      See you there.
+      - Boss
+
+  - id: email-monday-002
+    from: "HR (Golden Retriever)"
+    subject: "Wellness Wednesday This Week"
+    time: "08:45"
+    priority: low
+    read: false
+    body: |
+      Hi everyone!
+
+      Don't forget about Wellness Wednesday!
+      We'll have meditation sessions at 2pm.
+
+      Remember to take care of yourselves! 💚
+
+      Best,
+      HR Team
+
+  - id: email-monday-003
+    from: "Coworker Pug"
+    subject: "URGENT: Project deadline"
+    time: "09:15"
+    priority: high
+    read: false
+    body: |
+      Hey,
+
+      Did you finish your part of the project?
+      Client is asking for an update and I need
+      your section by EOD.
+
+      Can you send it ASAP?
+
+      Thanks!
+      - Pug
+
+  - id: email-monday-004
+    from: "IT Support (Border Collie)"
+    subject: "System Maintenance Tonight"
+    time: "09:30"
+    priority: medium
+    read: false
+    body: |
+      All systems will be down from 11pm-1am tonight
+      for scheduled maintenance.
+
+      Please save your work before then.
+
+      Thanks,
+      IT Support
+
+  - id: email-monday-005
+    from: "Designer Corgi"
+    subject: "Re: New designs for review"
+    time: "10:45"
+    priority: medium
+    read: false
+    body: |
+      Hey!
+
+      I finished the mockups you requested.
+      Can you take a look when you have a chance?
+
+      Link: [mockups.figma.com/project]
+
+      Let me know what you think!
+      - Corgi
+
+# Scheduled meetings
+meetings:
+  - id: meeting-monday-001
+    title: "Weekly Team Standup"
+    time: "10:00"
+    duration: 30
+    type: team-meeting
+    required_mask: meeting-participant
+    participants:
+      - name: "Boss Chihuahua"
+        role: "manager"
+        mood: neutral
+      - name: "Coworker Pug"
+        role: "developer"
+        mood: neutral
+      - name: "Designer Corgi"
+        role: "designer"
+        mood: happy
+    events:
+      - time: 2
+        type: question
+        speaker: "Boss Chihuahua"
+        text: "Alright team, let's hear updates. Who wants to go first?"
+        choices:
+          - text: "Volunteer to go first (confident)"
+            mask: presenter
+            energyCost: 15
+            stressCost: 8
+            consequence: "Boss nods approvingly. Good impression!"
+          - text: "Wait for someone else"
+            mask: meeting-participant
+            energyCost: 5
+            stressCost: 3
+            consequence: "You wait. Pug volunteers instead."
+
+      - time: 10
+        type: question
+        speaker: "Boss Chihuahua"
+        text: "So what did you accomplish last week?"
+        choices:
+          - text: "Give detailed technical explanation"
+            mask: presenter
+            energyCost: 20
+            stressCost: 10
+            consequence: "Boss looks a bit confused but impressed."
+          - text: "Keep it brief and clear"
+            mask: meeting-participant
+            energyCost: 10
+            stressCost: 5
+            consequence: "Boss nods. 'Great, thanks.'"
+          - text: "Minimize your work"
+            mask: careful-subordinate
+            energyCost: 8
+            stressCost: 12
+            consequence: "Boss looks concerned. 'That's it?'"
+
+      - time: 20
+        type: discussion
+        speaker: "Coworker Pug"
+        text: "I'm blocked on that API integration. Can anyone help?"
+        choices:
+          - text: "Offer to help immediately"
+            mask: casual-colleague
+            energyCost: 15
+            stressCost: 8
+            consequence: "Pug looks relieved. 'Thanks!'"
+          - text: "Suggest checking documentation first"
+            mask: meeting-participant
+            energyCost: 8
+            stressCost: 5
+            consequence: "Reasonable suggestion. Meeting continues."
+          - text: "Stay silent"
+            mask: careful-subordinate
+            energyCost: 5
+            stressCost: 10
+            consequence: "Someone else volunteers. Awkward moment passed."
+
+  - id: meeting-monday-002
+    title: "1:1 with Boss"
+    time: "14:00"
+    duration: 30
+    type: one-on-one
+    required_mask: careful-subordinate
+    participants:
+      - name: "Boss Chihuahua"
+        role: "manager"
+        mood: neutral
+    events:
+      - time: 2
+        type: question
+        speaker: "Boss Chihuahua"
+        text: "How are you doing? How's the workload?"
+        choices:
+          - text: "Everything's fine! No problems."
+            mask: professional-client-facer
+            energyCost: 15
+            stressCost: 15
+            consequence: "Masking hard feelings. Boss seems satisfied but you're drained."
+          - text: "It's manageable, some challenges"
+            mask: careful-subordinate
+            energyCost: 10
+            stressCost: 8
+            consequence: "Honest but professional. Boss appreciates the candor."
+          - text: "Honestly, I'm struggling a bit"
+            mask: none
+            energyCost: 0
+            stressCost: 20
+            consequence: "Boss looks uncomfortable. 'Well, everyone's busy...'"
+
+      - time: 15
+        type: question
+        speaker: "Boss Chihuahua"
+        text: "The client presentation is Friday. Are you ready?"
+        choices:
+          - text: "Absolutely ready to present!"
+            mask: presenter
+            energyCost: 15
+            stressCost: 10
+            consequence: "Boss looks relieved. 'Great, you'll lead it then.'"
+          - text: "Yes, I can have materials ready"
+            mask: careful-subordinate
+            energyCost: 10
+            stressCost: 8
+            consequence: "Boss nods. 'Good. Send me a draft by Wednesday.'"
+          - text: "I need more time..."
+            mask: none
+            energyCost: 5
+            stressCost: 25
+            consequence: "Boss frowns. 'This is important. Make it work.'"
+
+  - id: meeting-monday-003
+    title: "Client Check-in (Optional)"
+    time: "16:00"
+    duration: 60
+    type: client-meeting
+    optional: true
+    required_mask: professional-client-facer
+    participants:
+      - name: "Boss Chihuahua"
+        role: "manager"
+        mood: neutral
+      - name: "Client Representative"
+        role: "client"
+        mood: neutral
+    events:
+      - time: 5
+        type: presentation
+        speaker: "Boss Chihuahua"
+        text: "Let me hand it over to our team member to discuss the technical details."
+        choices:
+          - text: "Present confidently with details"
+            mask: professional-client-facer
+            energyCost: 30
+            stressCost: 15
+            consequence: "Client looks impressed. Boss smiles."
+          - text: "Give high-level overview"
+            mask: presenter
+            energyCost: 20
+            stressCost: 18
+            consequence: "Decent presentation. Client asks follow-up questions."
+          - text: "Defer to boss"
+            mask: careful-subordinate
+            energyCost: 10
+            stressCost: 20
+            consequence: "Boss looks annoyed but covers for you."
+
+# Daily tasks
+tasks:
+  - id: task-monday-001
+    text: "Finish project section for Pug"
+    priority: high
+    energyCost: 30
+    timeRequired: 120
+    deadline: "17:00"
+    completed: false
+    consequence_success: "Pug sends grateful message. Stress -10"
+    consequence_failure: "Pug is disappointed. Stress +15"
+
+  - id: task-monday-002
+    text: "Review Corgi's designs"
+    priority: medium
+    energyCost: 15
+    timeRequired: 30
+    deadline: "18:00"
+    completed: false
+    consequence_success: "Corgi appreciates feedback. Happiness +5"
+    consequence_failure: "Corgi follows up again. Minor annoyance."
+
+  - id: task-monday-003
+    text: "Prepare draft for client presentation"
+    priority: high
+    energyCost: 40
+    timeRequired: 180
+    deadline: "Wednesday 17:00"
+    completed: false
+    consequence_success: "Boss is pleased. Stress -5"
+    consequence_failure: "Boss is frustrated. Stress +20"
+
+  - id: task-monday-004
+    text: "Respond to IT about maintenance"
+    priority: low
+    energyCost: 5
+    timeRequired: 5
+    deadline: null
+    completed: false
+
+# Random events throughout the day
+events:
+  - id: event-monday-001
+    time: "11:30"
+    type: notification
+    title: "Slack Message from Pug"
+    description: "Pug is asking about the project status in Slack. Respond?"
+    choices:
+      - text: "Respond immediately"
+        energyCost: 5
+        stressCost: 3
+        consequence: "Quick response sent. Pug stops asking."
+      - text: "Respond later"
+        energyCost: 0
+        stressCost: 8
+        consequence: "Pug sends follow-up. Anxiety increases."
+      - text: "Mark as read, don't respond"
+        energyCost: 0
+        stressCost: 12
+        consequence: "Guilt sets in. Pug seems annoyed later."
+
+  - id: event-monday-002
+    time: "13:00"
+    type: choice
+    title: "Lunch Break"
+    description: "It's lunch time. What do you do?"
+    choices:
+      - text: "Take proper lunch break"
+        energyCost: -20
+        timeCost: 60
+        hungerCost: -40
+        happinessCost: 10
+        consequence: "Refreshed and ready for afternoon meetings."
+      - text: "Eat at desk while working"
+        energyCost: -5
+        timeCost: 15
+        hungerCost: -30
+        happinessCost: -5
+        consequence: "Fed but not rested. Afternoon will be harder."
+      - text: "Skip lunch, keep working"
+        energyCost: 0
+        timeCost: 0
+        hungerCost: 10
+        happinessCost: -10
+        stressCost: 5
+        consequence: "More time to work, but at what cost?"
+
+  - id: event-monday-003
+    time: "15:30"
+    type: notification
+    title: "Energy Check"
+    description: "You're feeling tired. Take a break or push through?"
+    condition: "energy < 30"
+    choices:
+      - text: "Take 15 minute break"
+        energyCost: -10
+        timeCost: 15
+        stressCost: -5
+        consequence: "Brief rest helps. Back to work refreshed."
+      - text: "Coffee and push through"
+        energyCost: 15
+        timeCost: 5
+        stressCost: 8
+        consequence: "Caffeine boost! But increased anxiety."
+      - text: "Just keep working"
+        energyCost: -5
+        stressCost: 10
+        consequence: "Pushing through fatigue. Quality suffers."
+
+# End of day summary thresholds
+end_of_day:
+  success_conditions:
+    - "All high priority tasks completed"
+    - "energy > 20"
+    - "stress < 80"
+
+  perfect_day:
+    conditions:
+      - "All tasks completed"
+      - "All meetings attended with correct mask"
+      - "energy > 40"
+      - "stress < 60"
+    reward:
+      happiness: 20
+      message: "Great job! You balanced everything perfectly."
+
+  burnout_warning:
+    conditions:
+      - "energy < 10"
+      - "stress > 90"
+    consequence:
+      message: "You're burning out. Consider calling in sick tomorrow?"

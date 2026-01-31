@@ -1,0 +1,34 @@
+meetings:
+  - id: meeting-001
+    title: "Weekly Standup"
+    time: "10:00 AM"
+    duration: 30
+    participants:
+      - "Boss Chihuahua"
+      - "Coworker Pug"
+      - "Designer Corgi"
+      - "You"
+    required_mask: "meeting-participant"
+    description: "Weekly team sync-up"
+
+  - id: meeting-002
+    title: "1:1 with Boss"
+    time: "2:00 PM"
+    duration: 30
+    participants:
+      - "Boss Chihuahua"
+      - "You"
+    required_mask: "careful-subordinate"
+    description: "Weekly check-in with manager"
+
+  - id: meeting-003
+    title: "Client Presentation"
+    time: "4:00 PM"
+    duration: 60
+    participants:
+      - "Boss Chihuahua"
+      - "Client Representative"
+      - "You"
+    required_mask: "professional-client-facer"
+    description: "Project update for client"
+    optional: true

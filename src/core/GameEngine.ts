@@ -6,6 +6,9 @@
 import Phaser from 'phaser';
 import { BootScene } from '@presentation/scenes/BootScene';
 import { MainMenuScene } from '@presentation/scenes/MainMenuScene';
+import { RoomScene } from '@presentation/scenes/RoomScene';
+import { LaptopScene } from '@presentation/scenes/LaptopScene';
+import { MeetingScene } from '@presentation/scenes/MeetingScene';
 
 export interface GameConfig {
   containerId: string;
@@ -32,7 +35,7 @@ export class GameEngine {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
-      scene: [BootScene, MainMenuScene],
+      scene: [BootScene, MainMenuScene, RoomScene, LaptopScene, MeetingScene],
     };
 
     this.game = new Phaser.Game(phaserConfig);

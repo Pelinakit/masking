@@ -1,0 +1,28 @@
+id: monday-standup-reminder
+from: Bark Thompson <bark@company.com>
+subject: Monday Standup - 10:00 AM
+important: true
+timestamp:
+  hour: 9
+  minute: 0
+
+body: |
+  Hey team,
+
+  Quick reminder that we have our weekly standup at 10:00 AM today.
+
+  Please be prepared to share:
+  - What you accomplished last week
+  - What you're working on this week
+  - Any blockers
+
+  See you there!
+
+  - Bark
+
+actions:
+  - label: Mark as Read
+    effects:
+      - type: stat
+        stat: stress
+        delta: 5

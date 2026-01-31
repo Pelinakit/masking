@@ -1,0 +1,58 @@
+id: monday-standup
+title: Weekly Team Standup
+meetingType: team-standup
+recommendedMask: meetingParticipant
+
+participants:
+  - boss-chihuahua
+  - coworker-tabby
+  - coworker-retriever
+
+startTime:
+  hour: 10
+  minute: 0
+
+duration: 0.5
+
+events:
+  - timestamp: 2
+    speaker: boss-chihuahua
+    dialogue: "Good morning everyone! Let's get started."
+
+  - timestamp: 5
+    speaker: boss-chihuahua
+    dialogue: "So, what are you working on today?"
+    choices:
+      - text: "Finishing the quarterly report."
+        effects:
+          - type: relationship
+            target: boss-chihuahua
+            delta: 5
+      - text: "Uh... I need to check my notes."
+        effects:
+          - type: relationship
+            target: boss-chihuahua
+            delta: -3
+          - type: stat
+            stat: stress
+            delta: 10
+      - text: "Working on optimizing the widget system."
+        effects:
+          - type: relationship
+            target: boss-chihuahua
+            delta: 10
+          - type: stat
+            stat: happiness
+            delta: 5
+
+  - timestamp: 15
+    speaker: coworker-tabby
+    dialogue: "I'm wrapping up the user analytics dashboard."
+
+  - timestamp: 25
+    speaker: boss-chihuahua
+    dialogue: "Great work everyone! Have a productive week."
+    effects:
+      - type: stat
+        stat: stress
+        delta: -5

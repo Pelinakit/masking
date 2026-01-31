@@ -7,7 +7,13 @@
       "Bash(bun run build)",
       "Bash(tree:*)",
       "Bash(git -C /Users/jk/code/masking status --short)",
-      "Bash(git -C /Users/jk/code/masking add:*)"
+      "Bash(git -C /Users/jk/code/masking add:*)",
+      "Bash(git -C /Users/jk/code/masking commit -m \"$\\(cat <<''EOF''\nfeat\\(core\\): initialize project scaffold with four-layer architecture\n\nSet up project foundation with Phaser 3, TypeScript, Bun, and Vite:\n- Four-layer architecture: core, game, scripting, presentation\n- Vite bundler with path aliases for clean imports\n- TypeScript strict mode with DOM support\n- Phaser 3 game engine initialization\n- LocalStorage-based state management\n- YAML narrative parser foundation\n- Example story demonstrating data format\n- Basic BootScene and MainMenuScene\n- Responsive canvas setup with FIT scaling\n\nBuild verification: successful\nType check: passing\n\nRelated ADR: 0004-project-scaffolding-structure.md\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(task pof-implementation-planner:*)",
+      "Bash(bun add:*)",
+      "Bash(pkill:*)",
+      "Bash(lsof:*)",
+      "Bash(git add:*)"
     ]
   }
 }

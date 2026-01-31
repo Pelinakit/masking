@@ -1,9 +1,10 @@
 /**
  * MainMenuScene
- * Presentation layer - main menu with placeholder UI
+ * Presentation layer - main menu with New Game / Continue options
  */
 
 import Phaser from 'phaser';
+import { StateManager } from '@game/StateManager';
 
 export class MainMenuScene extends Phaser.Scene {
   constructor() {
@@ -15,43 +16,72 @@ export class MainMenuScene extends Phaser.Scene {
 
     // Title
     this.add.text(width / 2, height / 3, 'Masking', {
-      fontSize: '48px',
+      fontSize: '64px',
       color: '#ffffff',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Comic Relief, Arial, sans-serif',
+      stroke: '#000000',
+      strokeThickness: 4,
     }).setOrigin(0.5);
 
     // Subtitle
-    this.add.text(width / 2, height / 2, 'A game about neurodivergent experiences', {
+    this.add.text(width / 2, height / 2, 'A game about neurodivergent experiences in remote work', {
       fontSize: '18px',
-      color: '#cccccc',
-      fontFamily: 'Arial, sans-serif',
+      color: '#ecf0f1',
+      fontFamily: 'Comic Relief, Arial, sans-serif',
     }).setOrigin(0.5);
 
-    // Placeholder for New Game button
-    const newGameText = this.add.text(width / 2, height * 0.65, 'New Game', {
-      fontSize: '24px',
-      color: '#00ff88',
-      fontFamily: 'Arial, sans-serif',
-    }).setOrigin(0.5)
+    // Check if save exists
+    const tempStateManager = new StateManager();
+    const hasSave = tempStateManager.hasSavedGame();
+
+    // New Game button
+    const newGameText = this.add.text(
+      width / 2,
+      height * 0.65,
+      hasSave ? 'New Game' : 'Start Game',
+      {
+        fontSize: '28px',
+        color: '#2ecc71',
+        fontFamily: 'Comic Relief, Arial, sans-serif',
+        stroke: '#000000',
+        strokeThickness: 3,
+      }
+    ).setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    newGameText.on('pointerover', () => {
-      newGameText.setScale(1.1);
-    });
-
-    newGameText.on('pointerout', () => {
-      newGameText.setScale(1.0);
-    });
-
+    newGameText.on('pointerover', () => newGameText.setScale(1.1));
+    newGameText.on('pointerout', () => newGameText.setScale(1.0));
     newGameText.on('pointerdown', () => {
-      console.log('New Game clicked - game scenes not yet implemented');
+      if (hasSave) {
+        // Reset save and start new game
+        tempStateManager.resetGame();
+      }
+      this.scene.start('RoomScene');
     });
+
+    // Continue button (if save exists)
+    if (hasSave) {
+      const continueText = this.add.text(width / 2, height * 0.75, 'Continue', {
+        fontSize: '28px',
+        color: '#3498db',
+        fontFamily: 'Comic Relief, Arial, sans-serif',
+        stroke: '#000000',
+        strokeThickness: 3,
+      }).setOrigin(0.5)
+        .setInteractive({ useHandCursor: true });
+
+      continueText.on('pointerover', () => continueText.setScale(1.1));
+      continueText.on('pointerout', () => continueText.setScale(1.0));
+      continueText.on('pointerdown', () => {
+        this.scene.start('RoomScene');
+      });
+    }
 
     // Version info
-    this.add.text(10, height - 30, 'v0.1.0 - Scaffolding Complete', {
+    this.add.text(10, height - 30, 'v0.2.0 - Phase 4.2 Development', {
       fontSize: '12px',
-      color: '#666666',
-      fontFamily: 'Arial, sans-serif',
+      color: '#95a5a6',
+      fontFamily: 'Comic Relief, Arial, sans-serif',
     });
   }
 }
