@@ -4,8 +4,8 @@
  */
 
 import { load } from 'js-yaml';
-import { StatName } from '@game/systems/StatSystem';
-import { MaskType } from '@game/StateManager';
+import type { StatName } from '@game/systems/StatSystem';
+import type { MaskType } from '@game/StateManager';
 
 // Scene Script Types
 export interface SceneHotspot {

@@ -3,7 +3,7 @@
  * Game Logic layer - defines and applies stat modifications
  */
 
-import { StatSystem, StatName } from './StatSystem';
+import { StatSystem, type StatName } from './StatSystem';
 
 export type ModifierType = 'instant' | 'duration' | 'decay' | 'recovery';
 

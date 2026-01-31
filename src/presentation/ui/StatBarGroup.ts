@@ -6,7 +6,7 @@
 
 import Phaser from 'phaser';
 import { StatBar } from './StatBar';
-import { StatSystem, StatName } from '@game/systems/StatSystem';
+import { StatSystem, type StatName } from '@game/systems/StatSystem';
 
 export interface StatBarGroupConfig {
   scene: Phaser.Scene;

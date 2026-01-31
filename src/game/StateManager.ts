@@ -4,7 +4,7 @@
  */
 
 import { StatSystem } from './systems/StatSystem';
-import { TimeManager, GameTime, DayOfWeek } from './systems/TimeManager';
+import { TimeManager, type GameTime, type DayOfWeek } from './systems/TimeManager';
 import { StatModifier } from './systems/StatModifier';
 
 export type MaskType =

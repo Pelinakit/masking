@@ -10,7 +10,7 @@ import { StatBarGroup } from '@presentation/ui/StatBarGroup';
 import { ClockDisplay } from '@presentation/ui/ClockDisplay';
 import { UILayerManager } from '@presentation/ui/UILayerManager';
 import { DebugPanel } from '@presentation/ui/DebugPanel';
-import { yamlParser, SceneScript } from '@scripting/YAMLParser';
+import { yamlParser, type SceneScript } from '@scripting/YAMLParser';
 import { InputManager } from '@game/systems/InputManager';
 import { TutorialManager } from '@game/systems/TutorialManager';
 import { AudioManager } from '@game/systems/AudioManager';
