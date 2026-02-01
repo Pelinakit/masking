@@ -9,6 +9,7 @@ import { NodeEditorView } from './NodeEditorView.js';
 import { TimelineView } from './TimelineView.js';
 import { CharacterView } from './CharacterView.js';
 import { ArcView } from './ArcView.js';
+import { AssetView } from './AssetView.js';
 
 export class App {
   private container: HTMLElement;
@@ -84,14 +85,12 @@ export class App {
 
   private renderViewPlaceholder(view: ViewType): string {
     // Return empty div for dynamic views that need component instances
-    if (view === 'timeline' || view === 'editor' || view === 'characters' || view === 'arcs') {
+    if (view === 'timeline' || view === 'editor' || view === 'characters' || view === 'arcs' || view === 'assets') {
       return '<div id="dynamic-view-container" style="width: 100%; height: 100%;"></div>';
     }
 
     // Return static HTML for other views
     switch (view) {
-      case 'assets':
-        return this.renderAssetsView();
       case 'validate':
         return this.renderValidateView();
       default:
@@ -118,21 +117,9 @@ export class App {
       this.currentView = new CharacterView(container as HTMLElement);
     } else if (view === 'arcs') {
       this.currentView = new ArcView(container as HTMLElement);
+    } else if (view === 'assets') {
+      this.currentView = new AssetView(container as HTMLElement);
     }
-  }
-
-  private renderAssetsView(): string {
-    return `
-      <div class="panel">
-        <div class="panel-header">
-          <h2 class="panel-title">Asset Manager</h2>
-        </div>
-        <p class="text-dim">Asset browser will appear here.</p>
-        <p class="text-sm text-dim" style="margin-top: 16px;">
-          Browse sprites, backgrounds, and sounds. Drag them into your scenes.
-        </p>
-      </div>
-    `;
   }
 
   private renderValidateView(): string {

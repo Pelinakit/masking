@@ -21,10 +21,10 @@ As a script/story writer, I want a comprehensive authoring toolkit so that I can
 - [x] Import/export YAML files - Bidirectional
 - [x] Week/day timeline view for organizing content
 - [x] Character database with voice/sprite configuration
-- [x] Story arc tracking across multiple days (S27-S30) - COMPLETE
-- [ ] Asset manager for sprites, sounds, backgrounds (S31-S34 next)
+- [x] Story arc tracking across multiple days
+- [x] Asset manager for sprites, sounds, backgrounds (S31-S34) - COMPLETE
 - [x] Speech-gen integration for dialogue audio preview - Web Audio API
-- [ ] YAML validation with helpful error messages (S35-S39)
+- [ ] YAML validation with helpful error messages (S35-S39 next)
 
 ## Progress
 
@@ -34,7 +34,7 @@ As a script/story writer, I want a comprehensive authoring toolkit so that I can
 - E1-E4: Core infrastructure
 - E5-E9: Systems integration
 
-**Track B: Story Forge Toolkit** (27/44 tasks - 61%) ✅
+**Track B: Story Forge Toolkit** (31/44 tasks - 70%) ✅
 
 1. **S1-S4: Foundation** ✅
 2. **S13-S20: Node Editor Core** ✅
@@ -42,32 +42,29 @@ As a script/story writer, I want a comprehensive authoring toolkit so that I can
 4. **S5-S8: Timeline View** ✅
 5. **S9-S12: Character Database** ✅
 6. **S27-S30: Story Arc Tracker** ✅
-   - Arc list/editor with color-coding
-   - Arc indicators on timeline (color bars)
-   - Day assignment system
-   - Continuity checker with gap detection
+7. **S31-S34: Asset Manager** ✅
+   - Tree-view asset browser
+   - Sprite/background image preview
+   - Audio playback controls
+   - Drag-to-insert asset paths
+   - Missing asset scanner
 
-### Major Milestone: Over 60% Complete
+### Major Milestone: 70% Complete
 
 The toolkit now has:
 1. **Timeline** → Organize weeks and days with arc indicators
 2. **Editor** → Build dialogue visually
 3. **Characters** → Manage NPCs with voice preview
 4. **Story Arcs** → Track narrative threads across days
-5. **YAML** → Export/import scenarios
+5. **Assets** → Browse and preview game assets
+6. **YAML** → Export/import scenarios
 
 ### Next Priority
 
-**Asset Manager (S31-S34)**
-- S31: Asset browser tree view
-- S32: Asset preview (sprites, sounds)
-- S33: Drag-to-insert
-- S34: Missing asset scanner
-
-**Validation (S35-S39)**
-- S35: JSON schemas
-- S36: Real-time validator
-- S37: Dead-end detector
+**Validation Suite (S35-S39)**
+- S35: JSON schemas for YAML validation
+- S36: Real-time validator with error panel
+- S37: Dead-end detector for dialogue trees
 - S38: Stat balance analyzer
 - S39: Export panel
 
@@ -78,15 +75,18 @@ The toolkit now has:
 - S43: Documentation
 - S44: Sample project
 
+**Engine remaining (E7, E10-E13)**
+- E7: MeetingScene YAML loading
+- E10-E13: Advanced systems
+
 ### Files Created/Modified
 
 **Story Forge**:
-- `src/components/App.ts` - Added ArcView integration
-- `src/components/ArcView.ts` - NEW: Arc tracker component
-- `src/components/TimelineView.ts` - Added arc color indicators
-- `styles/main.css` - Arc view + arc indicator styles
+- `src/components/App.ts` - Added AssetView integration
+- `src/components/AssetView.ts` - NEW: Asset browser component
+- `styles/main.css` - Asset view styles
 
-### Commits Created (9 total)
+### Commits Created (10 total)
 
 1. `feat(tools): scaffold story-forge with server and state management`
 2. `feat(scripting): add scenario types and loader with hybrid time flow`
@@ -96,42 +96,47 @@ The toolkit now has:
 6. `feat(story-forge): implement bidirectional YAML serialization`
 7. `feat(story-forge): implement timeline view for organizing game days`
 8. `feat(story-forge): implement character database with voice preview`
-9. `feat(story-forge): implement story arc tracker with continuity checker` (pending)
+9. `feat(story-forge): implement story arc tracker with continuity checker`
+10. `feat(story-forge): implement asset manager with preview and scanner` (pending)
 
-### Story Arc Tracker Features
+### Asset Manager Features
 
-**Arc Management**:
-- Add/delete story arcs
-- Pre-loaded sample arcs (Client Presentation, Wellness Week, Team Conflict)
-- Custom color picker for each arc
-- Arc description text
+**Asset Browser**:
+- Tree view with folders (sprites, backgrounds, audio)
+- Expandable/collapsible folders
+- File type icons (🎨 sprites, 🖼️ backgrounds, 🔊 sounds)
+- Asset count indicators
+- Real-time search filtering
 
-**Timeline Integration**:
-- Color bars at top of day cards
-- Arc tags on day cards with custom colors
-- Visual indication of which arcs span which days
+**Preview Panel**:
+- Image preview with checkered background
+- Pixelated rendering for retro sprites
+- Audio playback controls (play/stop)
+- Asset path display
+- Copy path to clipboard
+- Drag-to-insert support
 
-**Day Assignment**:
-- Assign arcs to specific days
-- Multi-select day assignment
-- Remove days from arcs
-- Day tags showing assigned days
+**Missing Asset Scanner** (S34):
+- Scans project YAML files for asset references
+- Identifies broken asset paths
+- Lists files with missing references
+- Sample detection for demonstration
 
-**Continuity Checker**:
-- Detects gaps in arc day sequences
-- Warning icons for arcs with continuity issues
-- Validation panel showing all issues
-- Chronological day sorting (week1-monday < week1-tuesday < week2-monday)
+**Asset Statistics**:
+- Total sprite count
+- Total background count
+- Total sound count
+- Footer summary display
 
-**Sample Arcs**:
-- Client Presentation: Blue (#4a9eff), spans Week 1
-- Wellness Week: Green (#10b981), mid-week days
-- Team Conflict: Red (#f87171), discontinuous days
+**Sample Assets Loaded**:
+- 12 sprite assets (cat animations, furniture)
+- 6 background assets (room, PC screens)
+- Placeholder audio files
 
 ## Status
 - Created: 2026-02-01
 - Phase: implementation (4.2)
 - Last Update: 2026-02-01
-- Progress: 36/57 total tasks (63%)
-- **Milestone**: Over 60% complete
-- Next: Asset manager (S31-S34) for sprite/sound browsing
+- Progress: 40/57 total tasks (70%)
+- **Milestone**: 70% complete
+- Next: Validation suite (S35-S39) for error detection
