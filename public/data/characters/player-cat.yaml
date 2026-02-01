@@ -11,17 +11,17 @@ species: cat
 
 spritesheet:
   path: assets/sprites/characters/player-cat.png
-  frameWidth: 64
-  frameHeight: 256
+  frameWidth: 100
+  frameHeight: 200
 
 animations:
   idle:
-    frames: [0, 1, 2, 1] # Subtle breathing loop
+    frames: [0,0,1,0,0,0,1] # Subtle breathing loop
     frameRate: 2
     repeat: -1
 
   walk:
-    frames: [3, 4, 5, 4] # Walk cycle
+    frames: [2,3] # Walk cycle
     frameRate: 8
     repeat: -1
 
