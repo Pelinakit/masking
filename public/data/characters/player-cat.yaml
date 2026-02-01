@@ -25,17 +25,50 @@ animations:
     frameRate: 8
     repeat: -1
 
-  talk:
-    frames: [6, 7, 6] # Mouth movement
-    frameRate: 4
-    repeat: -1
-
   interact:
     frames: [8, 9, 10] # Reach, grab, pull back
     frameRate: 6
     repeat: 0 # Play once
 
 defaultAnimation: idle
+
+spritesheet:
+  path: assets/sprites/characters/cat-eat.png
+  frameWidth: 200
+  frameHeight: 150
+
+animations:
+  eat:
+    frames: [0,1,0,0,0,1]
+    frameRate: 2
+    repeat: -1
+defaultAnimation: eat
+
+spritesheet:
+  path: assets/sprites/characters/cat-cook.png
+  frameWidth: 165
+  frameHeight: 137
+
+animations:
+  cook:
+    frames: [0,1,0,0,0,1]
+    frameRate: 2
+    repeat: -1
+defaultAnimation: cook
+
+spritesheet:
+  path: assets/sprites/characters/player-chair-work.png
+  frameWidth: 250
+  frameHeight: 143
+
+animations:
+  chair_work:
+    frames: [0,1,0,0,0,1]
+    frameRate: 8
+    repeat: -1
+defaultAnimation: chair_work
+
+
 
 accessibility:
   reducedMotionStaticFrame: 0
