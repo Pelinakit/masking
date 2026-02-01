@@ -10,7 +10,7 @@ import { StatBarGroup } from '@presentation/ui/StatBarGroup';
 import { ClockDisplay } from '@presentation/ui/ClockDisplay';
 import { UILayerManager } from '@presentation/ui/UILayerManager';
 import { DebugPanel } from '@presentation/ui/DebugPanel';
-import { yamlParser, type SceneScript, type SceneHotspot, type SceneLayer } from '@scripting/YAMLParser';
+import { yamlParser, type SceneScript, type SceneHotspot, type SceneLayer, type BackgroundConfig, type HotspotSpriteConfig } from '@scripting/YAMLParser';
 import { assetWarningTracker } from '@core/AssetWarningTracker';
 import { config } from '../../config';
 import { InputManager } from '@game/systems/InputManager';
@@ -35,18 +35,21 @@ export class RoomScene extends Phaser.Scene {
   private hotspotSprites: Map<string, Phaser.GameObjects.Sprite | Phaser.GameObjects.Container> = new Map();
   private interactionPrompts: Map<string, Phaser.GameObjects.Text> = new Map();
 
-  private playerX: number = 400;
-  private readonly PLAYER_SPEED = 150;
-  private readonly ROOM_BOUNDS = { left: 50, right: 950 };
+  private playerX: number = 750;
+  private readonly PLAYER_SPEED = 280;  // Scaled for larger resolution
+  private readonly ROOM_BOUNDS = { left: 100, right: 1820 };
 
   // Depth layers for proper rendering order
   private static readonly DEPTH = {
-    BACKGROUND: 1,        // Behind everything
+    SCENE_BG: 0,          // Scene background image (behind everything)
     HOTSPOT_BG: 5,        // Background furniture (behind characters)
     CHARACTER: 50,        // Player and NPCs
     HOTSPOT_FG: 100,      // Foreground elements (in front of characters)
     UI: 1000,             // UI elements
   };
+
+  private backgroundImage?: Phaser.GameObjects.Image;
+  private placeholderElements: Phaser.GameObjects.GameObject[] = [];
 
   // Fallback animation state (when Character class isn't used)
   private fallbackAnimState: string = 'idle';
@@ -250,8 +253,8 @@ export class RoomScene extends Phaser.Scene {
         id: 'kitchen',
         title: 'Kitchen',
         description: 'Walk to the kitchen and press E (or tap) to prepare food.',
-        targetX: 750,
-        targetY: 420,
+        targetX: 1400,
+        targetY: 590,
         arrowDirection: 'down',
         condition: () => !this.tutorialManager.isStepCompleted('kitchen-used'),
       },
@@ -259,8 +262,8 @@ export class RoomScene extends Phaser.Scene {
         id: 'laptop',
         title: 'Your Laptop',
         description: 'This is where you check emails, attend meetings, and manage tasks.',
-        targetX: 500,
-        targetY: 400,
+        targetX: 800,
+        targetY: 560,
         arrowDirection: 'down',
       },
     ]);
@@ -269,28 +272,123 @@ export class RoomScene extends Phaser.Scene {
   }
 
   /**
-   * Create placeholder background
+   * Create placeholder background (used when no background image is specified or loading)
    */
   private createBackground(): void {
     const { width, height } = this.cameras.main;
 
+    // Clear any existing placeholder elements
+    this.clearPlaceholderBackground();
+
     // Background color
-    this.add.rectangle(width / 2, height / 2, width, height, 0x95a5a6);
+    const bg = this.add.rectangle(width / 2, height / 2, width, height, 0x2d3436);
+    bg.setDepth(RoomScene.DEPTH.SCENE_BG);
+    this.placeholderElements.push(bg);
 
-    // Floor
-    this.add.rectangle(width / 2, height - 100, width, 200, 0x7f8c8d);
-
-    // Wall
-    this.add.rectangle(width / 2, 200, width, 400, 0xbdc3c7);
+    // Grid pattern for placeholder
+    const graphics = this.add.graphics();
+    graphics.lineStyle(1, 0x444444, 0.3);
+    const gridSize = 100;
+    for (let x = 0; x < width; x += gridSize) {
+      graphics.lineBetween(x, 0, x, height);
+    }
+    for (let y = 0; y < height; y += gridSize) {
+      graphics.lineBetween(0, y, width, y);
+    }
+    graphics.setDepth(RoomScene.DEPTH.SCENE_BG);
+    this.placeholderElements.push(graphics);
 
     // Room label
-    this.add.text(width / 2, 50, 'Your Apartment', {
+    const label = this.add.text(width / 2, height / 2, 'Loading background...', {
       fontFamily: 'Comic Relief, sans-serif',
       fontSize: '32px',
-      color: '#2c3e50',
-      stroke: '#ffffff',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4,
+    });
+    label.setOrigin(0.5);
+    label.setDepth(RoomScene.DEPTH.SCENE_BG);
+    this.placeholderElements.push(label);
+  }
+
+  /**
+   * Clear placeholder background elements
+   */
+  private clearPlaceholderBackground(): void {
+    for (const element of this.placeholderElements) {
+      element.destroy();
+    }
+    this.placeholderElements = [];
+  }
+
+  /**
+   * Load background image from YAML config
+   */
+  private loadBackgroundImage(): void {
+    const bgConfig = this.sceneData?.background_image;
+    if (!bgConfig?.path) {
+      console.log('[RoomScene] No background_image specified in YAML');
+      return;
+    }
+
+    const textureKey = `bg-${this.sceneData?.id || 'room'}`;
+    const fullPath = config.assetPath(bgConfig.path);
+
+    console.log(`[RoomScene] Loading background: ${fullPath}`);
+
+    // Check if already loaded
+    if (this.textures.exists(textureKey)) {
+      console.log(`[RoomScene] Background texture already exists: ${textureKey}`);
+      this.createBackgroundSprite(textureKey, bgConfig);
+      return;
+    }
+
+    // Store config for callback
+    const configCopy = { ...bgConfig };
+
+    // Load image via HTMLImageElement to avoid Phaser loader conflicts
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      console.log(`[RoomScene] Background image loaded: ${fullPath}`);
+      this.textures.addImage(textureKey, img);
+      this.createBackgroundSprite(textureKey, configCopy);
+    };
+    img.onerror = () => {
+      console.error(`[RoomScene] Failed to load background: ${fullPath}`);
+      assetWarningTracker.warn(
+        'missing-sprite',
+        textureKey,
+        'Background image not found',
+        { expectedPath: fullPath }
+      );
+    };
+    img.src = fullPath;
+  }
+
+  /**
+   * Create background sprite from loaded texture
+   */
+  private createBackgroundSprite(textureKey: string, bgConfig: BackgroundConfig): void {
+    const { width, height } = this.cameras.main;
+
+    // Clear placeholder background
+    this.clearPlaceholderBackground();
+
+    // Destroy existing background image if any
+    if (this.backgroundImage) {
+      this.backgroundImage.destroy();
+    }
+
+    this.backgroundImage = this.add.image(width / 2, height / 2, textureKey);
+    this.backgroundImage.setDepth(RoomScene.DEPTH.SCENE_BG);
+
+    // Apply scale if specified
+    if (bgConfig.scale) {
+      this.backgroundImage.setScale(bgConfig.scale);
+    }
+
+    console.log(`[RoomScene] Background sprite created: ${textureKey}`);
   }
 
   /**
@@ -303,6 +401,9 @@ export class RoomScene extends Phaser.Scene {
       this.sceneData = yamlParser.parseScene(yamlContent);
       console.log('[RoomScene] Scene data loaded:', this.sceneData);
       console.log('[RoomScene] Hotspots from YAML:', this.sceneData.hotspots);
+
+      // Load background image if specified
+      this.loadBackgroundImage();
 
       // Refresh hotspots with new data
       this.refreshHotspots();
@@ -337,7 +438,7 @@ export class RoomScene extends Phaser.Scene {
       this.player = new Character(
         this,
         this.playerX,
-        500,
+        900,  // Ground level Y for 1080p
         this.playerConfig,
         accessibilitySettings
       );
@@ -372,12 +473,12 @@ export class RoomScene extends Phaser.Scene {
     playerGraphics.destroy();
 
     // Create sprite
-    this.player = this.add.sprite(this.playerX, 500, 'player-placeholder');
+    this.player = this.add.sprite(this.playerX, 900, 'player-placeholder');
     this.player.setOrigin(0.5, 1);
     this.player.setDepth(RoomScene.DEPTH.CHARACTER);
 
     // Add "P" label on the sprite
-    const pLabel = this.add.text(this.playerX, 500 - frameHeight / 2, 'P', {
+    const pLabel = this.add.text(this.playerX, 900 - frameHeight / 2, 'P', {
       fontSize: '48px',
       fontFamily: 'sans-serif',
       fontStyle: 'bold',
@@ -389,7 +490,7 @@ export class RoomScene extends Phaser.Scene {
     pLabel.setDepth(RoomScene.DEPTH.CHARACTER + 1);
 
     // Add debug text for frame info
-    const debugText = this.add.text(this.playerX, 500 - frameHeight - 5, '[?] idle', {
+    const debugText = this.add.text(this.playerX, 900 - frameHeight - 5, '[?] idle', {
       fontSize: '16px',
       fontFamily: 'monospace',
       color: '#ffffff',
@@ -408,6 +509,7 @@ export class RoomScene extends Phaser.Scene {
 
   /**
    * Create hotspots from scene data (YAML)
+   * Supports sprite-centric coordinates (new) and legacy direct coordinates
    */
   private createHotspots(): void {
     // Colors for different hotspot types
@@ -428,18 +530,19 @@ export class RoomScene extends Phaser.Scene {
 
     hotspotData.forEach(data => {
       const color = hotspotColors[data.id] || hotspotColors.default;
-      const centerX = data.x + data.width / 2;
-      const centerY = data.y + data.height / 2;
+
+      // Calculate positions based on sprite-centric or legacy format
+      const positions = this.calculateHotspotPositions(data);
 
       // Load sprite from YAML or create placeholder
-      this.loadHotspotSprite(data, color);
+      this.loadHotspotSprite(data, color, positions.spriteX, positions.spriteY);
 
       // Hotspot area (semi-transparent for debug visibility)
       const hotspot = this.add.rectangle(
-        centerX,  // YAML uses top-left, Phaser uses center
-        centerY,
-        data.width,
-        data.height,
+        positions.hitboxCenterX,
+        positions.hitboxCenterY,
+        positions.hitboxWidth,
+        positions.hitboxHeight,
         color,
         0.15  // More transparent now that we have sprites
       );
@@ -452,8 +555,8 @@ export class RoomScene extends Phaser.Scene {
       // Interaction prompt (hidden by default)
       const label = data.label || `${data.id} (E)`;
       const prompt = this.add.text(
-        centerX,
-        data.y - 20,
+        positions.hitboxCenterX,
+        positions.hitboxCenterY - positions.hitboxHeight / 2 - 20,
         label,
         {
           fontFamily: 'Comic Relief, sans-serif',
@@ -465,7 +568,7 @@ export class RoomScene extends Phaser.Scene {
       );
       prompt.setOrigin(0.5);
       prompt.setVisible(false);
-      prompt.setDepth(100);
+      prompt.setDepth(RoomScene.DEPTH.UI);
       this.interactionPrompts.set(data.id, prompt);
     });
 
@@ -473,14 +576,69 @@ export class RoomScene extends Phaser.Scene {
   }
 
   /**
+   * Calculate sprite and hitbox positions from hotspot data
+   * Supports sprite-centric (new) and legacy coordinate formats
+   */
+  private calculateHotspotPositions(data: SceneHotspot): {
+    spriteX: number;
+    spriteY: number;
+    hitboxCenterX: number;
+    hitboxCenterY: number;
+    hitboxWidth: number;
+    hitboxHeight: number;
+  } {
+    // New sprite-centric format: sprite has x/y, hitbox is relative
+    if (data.sprite?.x !== undefined && data.sprite?.y !== undefined) {
+      const spriteX = data.sprite.x;
+      const spriteY = data.sprite.y;
+
+      // Hitbox defaults to sprite position if not specified
+      const hitbox = data.hitbox || { width: 100, height: 100 };
+      const hitboxOffsetX = hitbox.offset_x ?? 0;
+      const hitboxOffsetY = hitbox.offset_y ?? 0;
+
+      return {
+        spriteX,
+        spriteY,
+        hitboxCenterX: spriteX + hitboxOffsetX,
+        hitboxCenterY: spriteY + hitboxOffsetY,
+        hitboxWidth: hitbox.width,
+        hitboxHeight: hitbox.height,
+      };
+    }
+
+    // Legacy format: x/y/width/height define hitbox, sprite offset from center
+    const legacyX = data.x ?? 0;
+    const legacyY = data.y ?? 0;
+    const legacyWidth = data.width ?? 100;
+    const legacyHeight = data.height ?? 100;
+
+    const hitboxCenterX = legacyX + legacyWidth / 2;
+    const hitboxCenterY = legacyY + legacyHeight / 2;
+
+    // Sprite position with optional offsets
+    const spriteOffsetX = data.sprite?.x ?? 0;  // In legacy, these are offsets
+    const spriteOffsetY = data.sprite?.y ?? 0;
+
+    return {
+      spriteX: hitboxCenterX + spriteOffsetX,
+      spriteY: hitboxCenterY + spriteOffsetY,
+      hitboxCenterX,
+      hitboxCenterY,
+      hitboxWidth: legacyWidth,
+      hitboxHeight: legacyHeight,
+    };
+  }
+
+  /**
    * Load hotspot sprite from YAML config or create placeholder
    */
-  private loadHotspotSprite(data: SceneHotspot, fallbackColor: number): void {
+  private loadHotspotSprite(data: SceneHotspot, fallbackColor: number, spriteX: number, spriteY: number): void {
     const spriteConfig = data.sprite;
 
     if (!spriteConfig?.path) {
-      // No sprite path defined, create placeholder
-      this.createHotspotPlaceholder(data, fallbackColor);
+      // No sprite path defined, create placeholder at hitbox position
+      this.createHotspotPlaceholder(data, fallbackColor, spriteX, spriteY);
       return;
     }
 
@@ -489,7 +647,7 @@ export class RoomScene extends Phaser.Scene {
 
     // Check if texture already exists
     if (this.textures.exists(textureKey)) {
-      this.createHotspotSpriteFromTexture(data, textureKey, spriteConfig);
+      this.createHotspotSpriteFromTexture(data.id, textureKey, spriteX, spriteY, spriteConfig);
       return;
     }
 
@@ -502,7 +660,7 @@ export class RoomScene extends Phaser.Scene {
         if (existingPlaceholder) {
           existingPlaceholder.destroy();
         }
-        this.createHotspotSpriteFromTexture(data, textureKey, spriteConfig);
+        this.createHotspotSpriteFromTexture(data.id, textureKey, spriteX, spriteY, spriteConfig);
       }
     });
     this.load.once('loaderror', () => {
@@ -513,7 +671,7 @@ export class RoomScene extends Phaser.Scene {
         `Furniture sprite not found`,
         { expectedPath: fullPath }
       );
-      this.createHotspotPlaceholder(data, fallbackColor);
+      this.createHotspotPlaceholder(data, fallbackColor, spriteX, spriteY);
     });
     this.load.start();
   }
@@ -522,24 +680,20 @@ export class RoomScene extends Phaser.Scene {
    * Create sprite from loaded texture
    */
   private createHotspotSpriteFromTexture(
-    data: SceneHotspot,
+    hotspotId: string,
     textureKey: string,
-    spriteConfig: NonNullable<SceneHotspot['sprite']>
+    spriteX: number,
+    spriteY: number,
+    spriteConfig: HotspotSpriteConfig
   ): void {
     const scale = spriteConfig.scale ?? 1.0;
-    const offsetX = spriteConfig.offset_x ?? 0;
-    const offsetY = spriteConfig.offset_y ?? 0;
     const layer = spriteConfig.layer ?? 'background';
 
-    const sprite = this.add.sprite(
-      data.x + data.width / 2 + offsetX,
-      data.y + data.height / 2 + offsetY,
-      textureKey
-    );
+    const sprite = this.add.sprite(spriteX, spriteY, textureKey);
     sprite.setScale(scale);
     sprite.setDepth(this.getLayerDepth(layer));
 
-    this.hotspotSprites.set(data.id, sprite);
+    this.hotspotSprites.set(hotspotId, sprite);
   }
 
   /**
@@ -552,39 +706,41 @@ export class RoomScene extends Phaser.Scene {
   }
 
   /**
-   * Create dashed-border placeholder for missing hotspot sprite
+   * Create placeholder for missing hotspot sprite
    */
-  private createHotspotPlaceholder(data: SceneHotspot, color: number): void {
-    const container = this.add.container(data.x + data.width / 2, data.y + data.height / 2);
+  private createHotspotPlaceholder(data: SceneHotspot, color: number, spriteX: number, spriteY: number): void {
     const layer = data.sprite?.layer ?? 'background';
+    const placeholderSize = 64;
 
-    // Draw dashed border
+    const container = this.add.container(spriteX, spriteY);
+
+    // Draw dashed border box
     const graphics = this.add.graphics();
-    const dashLength = 6;
-    const gapLength = 4;
-    const halfW = data.width / 2;
-    const halfH = data.height / 2;
+    const halfSize = placeholderSize / 2;
 
     graphics.lineStyle(2, color, 0.8);
 
     // Draw dashed rectangle
-    this.drawDashedLine(graphics, -halfW, -halfH, halfW, -halfH, dashLength, gapLength); // top
-    this.drawDashedLine(graphics, halfW, -halfH, halfW, halfH, dashLength, gapLength);   // right
-    this.drawDashedLine(graphics, halfW, halfH, -halfW, halfH, dashLength, gapLength);   // bottom
-    this.drawDashedLine(graphics, -halfW, halfH, -halfW, -halfH, dashLength, gapLength); // left
+    const dashLength = 6;
+    const gapLength = 4;
+    this.drawDashedLine(graphics, -halfSize, -halfSize, halfSize, -halfSize, dashLength, gapLength);
+    this.drawDashedLine(graphics, halfSize, -halfSize, halfSize, halfSize, dashLength, gapLength);
+    this.drawDashedLine(graphics, halfSize, halfSize, -halfSize, halfSize, dashLength, gapLength);
+    this.drawDashedLine(graphics, -halfSize, halfSize, -halfSize, -halfSize, dashLength, gapLength);
 
     // Semi-transparent fill
-    graphics.fillStyle(color, 0.15);
-    graphics.fillRect(-halfW, -halfH, data.width, data.height);
+    graphics.fillStyle(color, 0.2);
+    graphics.fillRect(-halfSize, -halfSize, placeholderSize, placeholderSize);
 
-    // Centered label with hotspot ID and layer indicator
+    // Label with hotspot ID and layer indicator
     const layerIndicator = layer === 'foreground' ? '▲' : '▼';
-    const label = this.add.text(0, 0, `[${data.id}] ${layerIndicator}`, {
-      fontSize: '14px',
+    const label = this.add.text(0, 0, `[${data.id}]\n${layerIndicator}`, {
+      fontSize: '12px',
       fontFamily: 'monospace',
       color: '#FFFFFF',
       backgroundColor: '#000000',
       padding: { x: 4, y: 2 },
+      align: 'center',
     });
     label.setOrigin(0.5);
 
@@ -667,6 +823,7 @@ export class RoomScene extends Phaser.Scene {
       spacing: 4,
     });
     this.statBars.linkStatSystem(this.stateManager.stats);
+    this.statBars.setDepth(RoomScene.DEPTH.UI);
 
     // Clock
     this.clock = new ClockDisplay({
@@ -677,6 +834,7 @@ export class RoomScene extends Phaser.Scene {
       showTimeScale: true,
     });
     this.clock.linkTimeManager(this.stateManager.time);
+    this.clock.setDepth(RoomScene.DEPTH.UI);
 
     // Instructions
     const inputType = this.inputManager.getInputType();
@@ -684,13 +842,15 @@ export class RoomScene extends Phaser.Scene {
       ? 'Tap buttons to move  |  Tap interact'
       : 'A/D or Arrows: Move  |  E: Interact';
 
-    this.add.text(width / 2, height - 30, instructions, {
+    const instructionsText = this.add.text(width / 2, height - 30, instructions, {
       fontFamily: 'Comic Relief, sans-serif',
       fontSize: '14px',
       color: '#ecf0f1',
       backgroundColor: '#000000',
       padding: { x: 8, y: 4 },
-    }).setOrigin(0.5);
+    });
+    instructionsText.setOrigin(0.5);
+    instructionsText.setDepth(RoomScene.DEPTH.UI);
   }
 
   /**
@@ -812,70 +972,86 @@ export class RoomScene extends Phaser.Scene {
 
   /**
    * Update hotspot proximity and show/hide prompts
+   * Shows prompt when player hitbox overlaps hotspot area
    */
   private updateHotspotProximity(): void {
     if (!this.player) return;
 
-    const INTERACTION_DISTANCE = 100;
+    // Player hitbox (centered on playerX, bottom at player.y)
+    const playerBounds = this.getPlayerBounds();
 
     this.hotspots.forEach(hotspot => {
       const id = hotspot.getData('id');
       const prompt = this.interactionPrompts.get(id);
       if (!prompt) return;
 
-      const distance = Phaser.Math.Distance.Between(
-        this.playerX,
-        this.player!.y,
-        hotspot.x,
-        hotspot.y
-      );
+      // Check if player hitbox overlaps hotspot rectangle
+      const hotspotBounds = hotspot.getBounds();
+      const overlaps = Phaser.Geom.Rectangle.Overlaps(playerBounds, hotspotBounds);
 
-      prompt.setVisible(distance < INTERACTION_DISTANCE);
+      prompt.setVisible(overlaps);
     });
   }
 
   /**
+   * Get player hitbox bounds
+   */
+  private getPlayerBounds(): Phaser.Geom.Rectangle {
+    const width = this.playerConfig?.spritesheet.frameWidth ?? 64;
+    const height = this.playerConfig?.spritesheet.frameHeight ?? 96;
+
+    return new Phaser.Geom.Rectangle(
+      this.playerX - width / 2,
+      this.player!.y - height,
+      width,
+      height
+    );
+  }
+
+  /**
    * Handle interaction
+   * Interacts with hotspot when player hitbox overlaps it
    */
   private handleInteraction(): void {
     if (!this.player) return;
 
-    const INTERACTION_DISTANCE = 100;
+    // Player hitbox
+    const playerBounds = this.getPlayerBounds();
 
-    // Find closest hotspot within range
+    // Find first overlapping hotspot (or closest if multiple overlap)
     let closestHotspot: Phaser.GameObjects.Rectangle | null = null;
-    let closestDistance = INTERACTION_DISTANCE;
+    let closestDistance = Infinity;
 
     this.hotspots.forEach(hotspot => {
-      const distance = Phaser.Math.Distance.Between(
-        this.playerX,
-        this.player!.y,
-        hotspot.x,
-        hotspot.y
-      );
+      const hotspotBounds = hotspot.getBounds();
 
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestHotspot = hotspot;
+      // Check collision
+      if (Phaser.Geom.Rectangle.Overlaps(playerBounds, hotspotBounds)) {
+        // If multiple overlap, pick the closest center
+        const distance = Phaser.Math.Distance.Between(
+          this.playerX,
+          this.player!.y,
+          hotspot.x,
+          hotspot.y
+        );
+
+        if (distance < closestDistance) {
+          closestDistance = distance;
+          closestHotspot = hotspot;
+        }
       }
     });
 
     if (closestHotspot) {
       const id = closestHotspot.getData('id');
 
-      // Play interact animation if using Character class
+      // Play interact animation if using Character class (visual feedback only)
       if (this.player instanceof Character) {
         this.player.playAnimation('interact');
-
-        // Listen for animation complete to trigger action
-        this.player.once('animationcomplete', () => {
-          this.triggerHotspotAction(id);
-        });
-      } else {
-        // Fallback: trigger action immediately
-        this.triggerHotspotAction(id);
       }
 
+      // Trigger action immediately
+      this.triggerHotspotAction(id);
       this.audioManager.playSfx('ui-click');
     }
   }

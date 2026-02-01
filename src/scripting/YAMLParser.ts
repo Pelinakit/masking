@@ -16,32 +16,49 @@ export type { CharacterConfig, AnimationConfig, CharacterAccessibility } from '@
 // Layer types for scene elements
 export type SceneLayer = 'background' | 'foreground';
 
-// Hotspot sprite configuration from YAML
-export interface HotspotSpriteConfig {
+// Background image configuration from YAML
+export interface BackgroundConfig {
   path: string;
   scale?: number;
-  offset_x?: number;
-  offset_y?: number;
+}
+
+// Hotspot sprite configuration from YAML (sprite-centric coordinates)
+export interface HotspotSpriteConfig {
+  path: string;
+  x: number;           // Sprite X position (absolute)
+  y: number;           // Sprite Y position (absolute)
+  scale?: number;
   layer?: SceneLayer;  // 'background' (behind characters) or 'foreground' (in front)
+}
+
+// Hitbox configuration relative to sprite
+export interface HotspotHitboxConfig {
+  offset_x?: number;   // Offset from sprite center
+  offset_y?: number;
+  width: number;
+  height: number;
 }
 
 // Scene Script Types
 export interface SceneHotspot {
   id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
   action: string;
   label?: string;
   condition?: string;
   sprite?: HotspotSpriteConfig;
+  hitbox?: HotspotHitboxConfig;
+  // Legacy support: direct x/y/width/height (deprecated)
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
 }
 
 export interface SceneScript {
   id: string;
   name: string;
-  background: string;
+  background: string;  // Legacy: background name/id
+  background_image?: BackgroundConfig;  // New: explicit background image config
   hotspots: SceneHotspot[];
   ambientSound?: string;
 }
@@ -294,6 +311,7 @@ export class YAMLParser {
       id: data.id,
       name: data.name,
       background: data.background || '',
+      background_image: data.background_image,
       hotspots: data.hotspots || [],
       ambientSound: data.ambientSound,
     };

@@ -1,60 +1,72 @@
 id: home
 name: Your Apartment
 background: home-interior
+background_image:
+  path: assets/backgrounds/room.png
 ambientSound: ambient-home
+
+# Sprite-centric coordinate system:
+# - sprite.x/y = sprite position (absolute)
+# - hitbox = interaction zone relative to sprite (player must overlap to interact)
 
 hotspots:
   - id: bed
-    x: 50
-    y: 400
-    width: 150
-    height: 100
     action: sleep
     label: Sleep (E)
     sprite:
       path: assets/sprites/furniture/bed.png
+      x: 448
+      y: 560
       scale: 1.0
-      offset_x: 0
-      offset_y: 0
       layer: background
+    hitbox:
+      offset_x: 0
+      offset_y: 220
+      width: 280
+      height: 300
 
   - id: laptop
-    x: 400
-    y: 380
-    width: 100
-    height: 80
     action: openLaptop
     label: Laptop (E)
     sprite:
       path: assets/sprites/furniture/laptop.png
+      x: 878
+      y: 568
       scale: 1.0
-      offset_x: 0
-      offset_y: 0
-      layer: foreground
+      layer: background
+    hitbox:
+      offset_x: -30
+      offset_y: 50
+      width: 150
+      height: 300
 
   - id: kitchen
-    x: 700
-    y: 350
-    width: 150
-    height: 120
     action: kitchen
     label: Kitchen (E)
     sprite:
       path: assets/sprites/furniture/kitchen.png
+      x: 1392
+      y: 568
       scale: 1.0
+      layer: background
+    hitbox:
       offset_x: 0
       offset_y: 0
+      width: 280
+      height: 170
 
   - id: door
-    x: 900
-    y: 400
-    width: 80
-    height: 200
     action: exitHome
     label: Door (E)
     condition: "!time.isWorkHours"
     sprite:
       path: assets/sprites/furniture/door.png
+      x: 1749
+      y: 545
       scale: 1.0
+      layer: background
+    hitbox:
       offset_x: 0
-      offset_y: 0
+      offset_y: 50
+      width: 150
+      height: 200

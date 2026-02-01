@@ -10,8 +10,8 @@ import './style.css';
 window.addEventListener('DOMContentLoaded', () => {
   const gameEngine = new GameEngine({
     containerId: 'game-container',
-    width: 1024,
-    height: 768,
+    width: 1920,
+    height: 1080,
   });
 
   gameEngine.initialize();

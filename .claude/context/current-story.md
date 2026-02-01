@@ -1,69 +1,60 @@
 # Current Story
 
 ## User Story
-As a game developer, I want a talking sound generator service that produces character-specific syllabic speech sounds (like Animal Crossing/Undertale) so that characters have voice-like personality during dialogue.
+As a game developer/content creator, I want YAML files to specify sprite paths and frame data for characters, items, furniture, and scenes so that assets can be loaded in a data-driven manner with graceful fallbacks for missing or mismatched assets.
 
 ## Acceptance Criteria
-- [x] Generates syllable-based speech sounds from input text
-- [x] Supports different emotional tones: bubbly/joyous, sad/slow, stern/agitated, angry, snoring, giggling, laughing
-- [x] Matches sentence rhythm with rising/falling intonation
-- [x] Works as standalone CLI tool for prototyping
-- [ ] Integrable as a service that runs parallel to game events (Phase 2)
-- [x] Different phoneme bases per character (bweh, buh, pip, meh sounds)
-
-## Technical Context
-
-### Existing Infrastructure
-- AudioManager handles music and SFX with Phaser.Sound
-- Character component has animation states including 'talk'
-- Bun runtime available for CLI tooling
-- Four-layer architecture (Core, Game Logic, Scripting, Presentation)
-
-### Design Requirements
-- Service must be scene-independent (can be used from any context)
-- Must not block the main thread during sound generation
-- Should integrate with existing audio settings (volume, enabled/disabled)
+- [x] YAML files can specify sprite paths and frame data for characters, items, furniture, scenes
+- [x] System loads assets based on YAML configuration
+- [x] Missing sprite path triggers console warning (once per asset) and uses placeholder
+- [x] Frame count mismatch (YAML defines more frames than spritesheet has) triggers console warning (once per asset) and uses available frames
+- [x] Game continues running without crashing when assets are missing/mismatched
 
 ## Implementation Summary
 
-### Phase 1: CLI Prototype (COMPLETE)
+### New Files Created
+- `src/core/AssetWarningTracker.ts` - Centralized warning deduplication with styled console output
 
-**New Files Created:**
-- `tools/speech-gen/cli.ts` - CLI entry point with argument parsing
-- `tools/speech-gen/types.ts` - TypeScript interfaces, voice/emotion configs
-- `tools/speech-gen/syllable-parser.ts` - Text-to-syllable parsing
-- `tools/speech-gen/audio-engine.ts` - Oscillator synthesis audio generation
-- `tools/speech-gen/wav-writer.ts` - WAV file encoding
-- `tools/speech-gen/README.md` - Documentation
+### Modified Files
+- `src/presentation/scenes/BootScene.ts` - Integrated AssetWarningTracker, enhanced placeholder sprites with CVD-friendly patterns
+- `src/presentation/components/Character.ts` - Added runtime frame validation with automatic clamping
+- `src/scripting/parsers/CharacterParser.ts` - Changed `validateFrameBounds()` to warn instead of throw
+- `src/scripting/YAMLParser.ts` - Extended SceneHotspot type with sprite configuration
+- `src/presentation/scenes/RoomScene.ts` - Load hotspot sprites from YAML with dashed-border placeholder fallback
+- `src/presentation/scenes/DevOverlayScene.ts` - Added DEV MODE indicator and Asset Status panel
 
-**Modified Files:**
-- `package.json` - Added `speech-gen` npm script
+### Features Implemented
 
-**Features Implemented:**
-1. **Syllable Parser** - Vowel-cluster heuristic for syllable detection
-2. **Sentence Detection** - Detects `.!?` boundaries for intonation
-3. **4 Voice Types** - bweh (300Hz), buh (200Hz), pip (600Hz), meh (250Hz)
-4. **8 Emotional Tones** - neutral, bubbly, sad, stern, angry, snoring, giggling, laughing
-5. **Intonation** - Pitch rises at sentence start, falls at end
-6. **WAV Export** - Save generated audio to file
-7. **Audio Playback** - Uses system audio player (afplay on macOS)
+1. **AssetWarningTracker** - Centralized warning system
+   - Deduplicates warnings (logs once per asset)
+   - Styled console output with severity levels
+   - Tracks all warnings for dev tools
+   - `getAll()`, `getSummary()`, `clear()` methods
 
-**Usage:**
-```bash
-bun run speech-gen --text "Hello there!" --voice pip --emotion bubbly
-bun run speech-gen -t "I'm sad..." -v buh -e sad -o output.wav
-bun run speech-gen -t "Test" --info  # Show parsing info
-```
+2. **Enhanced Placeholder Sprites**
+   - Diagonal stripe pattern (CVD-friendly)
+   - Warning triangle icon in top-left corner
+   - High-contrast text with black stroke
+   - Frame numbers at bottom
 
-### Phase 2: Game Integration (PENDING)
-- [ ] Create `src/game/systems/TalkingSoundManager.ts`
-- [ ] Port audio engine to work with Phaser's AudioContext
-- [ ] Add voice configuration to character YAML
-- [ ] Integrate with DialogueBox component
-- [ ] Add voiceVolume/voiceEnabled to AudioManager settings
-- [ ] Per-character voice muting (accessibility)
+3. **Frame Validation & Clamping**
+   - CharacterParser.validateFrameBounds() now warns instead of throwing
+   - Character.createAnimations() validates frames at runtime
+   - Out-of-bounds frames automatically clamped to available range
+
+4. **Hotspot Sprite Loading**
+   - SceneHotspot type extended with sprite config (path, scale, offset)
+   - RoomScene loads sprites from YAML paths
+   - Dashed-border placeholder for missing sprites
+   - Hot-reload support
+
+5. **Dev Mode Enhancements**
+   - "🔧 DEV MODE" indicator (top-left)
+   - "Asset Status" button with popup panel
+   - Panel shows all missing/mismatched assets
+   - Clear All button to reset warnings
 
 ## Status
-- Created: 2026-01-31
-- Phase 1 Completed: 2026-01-31
-- Phase: Phase 1 complete, Phase 2 pending
+- Created: 2026-02-01
+- Completed: 2026-02-01
+- Phase: done
