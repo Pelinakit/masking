@@ -10,6 +10,15 @@ events:
     choices:
       - text: Proceed with the meeting
       - text: Turn camera off
+        effects: &a3
+          - type: relationship
+            target: boss-chihuahua
+            operation: "-"
+            value: 10
+          - type: stat
+            target: stress
+            operation: "-"
+            value: 10
       - text: Mimic a potted plant
   - time: 2
     type: conditional
@@ -26,36 +35,80 @@ events:
     text: Conditional event
     condition: &a2
       type: stat
+      target: social_anxiety
       operator: ">"
-      target: energy
       value: 50
   - time: 6
-    type: conditional
-    speaker: System
-    text: Conditional event
-    condition: &a3
-      type: stat
-      operator: ">"
-      target: energy
-      value: 50
+    type: dialogue
+    speaker: boss-chihuahua
+    text: Huh? Sorry, I must be in the wrong meeting.
   - time: 8
+    type: dialogue
+    speaker: boss-chihuahua
+    text: Furner! What on earth are you doing!?
+    emotion: angry
+  - time: 10
     type: email
     speaker: dorg
-    text: New Email
+    text: Impersonation is not tolerated
     email:
       from: dorg
-      subject: New Email
-      body: Email content here...
+      subject: Impersonation is not tolerated
+      body: |-
+        Dear employee,
+        DON'T BE WEIRD!
+        We have assigned you to behavioral training.
+
+        Br, HR
+      arrivalTime: 09:00
+      urgent: true
+      requiresResponse: false
+  - time: 12
+    type: task
+    speaker: Tasks
+    text: Attend Mandated Behavioral Training
+    task:
+      title: Attend Mandated Behavioral Training
+      description: You did something that others though was strange. Attend training to learn proper conduct.
+      availableTime: 09:00
+      priority: high
+      energyCost: 10
+      duration: 30
+  - time: 14
+    type: dialogue
+    speaker: boss-chihuahua
+    text: Good meeting. Back to bork—I mean work!
+  - time: 16
+    type: email
+    speaker: boss-chihuahua
+    text: Reschedule meeting
+    email:
+      from: boss-chihuahua
+      subject: Reschedule meeting
+      body: Something came up, may have to reschedule. I'll let you know.
       arrivalTime: 09:00
       urgent: false
       requiresResponse: false
+  - time: 18
+    type: meeting
+    speaker: Calendar
+    text: Meeting with Boss
+    meeting:
+      title: Meeting with Boss
+      startTime: 08:00
+      duration: 30
+      participants: &a4
+        - boss-chihuahua
+        - player-cat
+      energyCost: 10
+      stressCost: 10
 _graph:
   nodes:
     - id: node-1
       type: choice
       position:
-        x: -363
-        y: -185
+        x: -218.39265189513247
+        y: -92.39853945872349
       inputs:
         - id: node-1-in
           type: flow
@@ -85,8 +138,8 @@ _graph:
     - id: node-2
       type: condition
       position:
-        x: 86
-        y: -172
+        x: 116.8436745425071
+        y: -163.53832503976415
       inputs:
         - id: node-2-in
           type: flow
@@ -100,29 +153,11 @@ _graph:
       condition: *a1
       trueOutputId: node-2-true
       falseOutputId: node-2-false
-    - id: node-3
-      type: condition
-      position:
-        x: 21
-        y: -14
-      inputs:
-        - id: node-3-in
-          type: flow
-      outputs:
-        - id: node-3-true
-          type: flow
-          label: "True"
-        - id: node-3-false
-          type: flow
-          label: "False"
-      condition: *a2
-      trueOutputId: node-3-true
-      falseOutputId: node-3-false
     - id: node-4
       type: condition
       position:
-        x: -30
-        y: 126
+        x: 39.25027903865916
+        y: 128.0671725086167
       inputs:
         - id: node-4-in
           type: flow
@@ -133,14 +168,14 @@ _graph:
         - id: node-4-false
           type: flow
           label: "False"
-      condition: *a3
+      condition: *a2
       trueOutputId: node-4-true
       falseOutputId: node-4-false
     - id: node-6
       type: effect
       position:
-        x: 408.8322996054573
-        y: -173.07625302606502
+        x: 428.26924794141036
+        y: -274.58031655826426
       inputs:
         - id: node-6-in
           type: flow
@@ -148,45 +183,272 @@ _graph:
         - id: node-6-out
           type: flow
       effects:
-        - type: relationship
+        - type: stat
+          target: happiness
+          operation: "-"
+          value: 10
+        - type: stat
           target: energy
           operation: "-"
           value: 10
-    - id: node-7
+        - type: stat
+          target: social_anxiety
+          operation: +
+          value: 10
+        - type: stat
+          target: stress
+          operation: +
+          value: 10
+    - id: node-8
+      type: dialogue
+      position:
+        x: 274.9018180689538
+        y: 128.55539886840063
+      inputs:
+        - id: node-8-in
+          type: flow
+      outputs:
+        - id: node-8-out
+          type: flow
+      speaker: boss-chihuahua
+      text: Huh? Sorry, I must be in the wrong meeting.
+      emotion: neutral
+    - id: node-10
+      type: effect
+      position:
+        x: 533.28747116259
+        y: 126.32161930898248
+      inputs:
+        - id: node-10-in
+          type: flow
+      outputs:
+        - id: node-10-out
+          type: flow
+      effects:
+        - type: stat
+          target: happiness
+          operation: +
+          value: 10
+        - type: stat
+          target: stress
+          operation: "-"
+          value: 10
+    - id: node-11
+      type: dialogue
+      position:
+        x: 273.3935509819648
+        y: 269.9713098441629
+      inputs:
+        - id: node-11-in
+          type: flow
+      outputs:
+        - id: node-11-out
+          type: flow
+      speaker: boss-chihuahua
+      text: Furner! What on earth are you doing!?
+      emotion: angry
+    - id: node-12
+      type: effect
+      position:
+        x: 530.0616363171101
+        y: 271.23918142180673
+      inputs:
+        - id: node-12-in
+          type: flow
+      outputs:
+        - id: node-12-out
+          type: flow
+      effects:
+        - type: relationship
+          target: boss-chihuahua
+          operation: "-"
+          value: 10
+        - type: stat
+          target: stress
+          operation: +
+          value: 10
+        - type: flag
+          target: trouble_with_boss
+          operation: =
+          value: true
+    - id: node-13
       type: email
       position:
-        x: 397.9089706805054
-        y: 85.10455146597472
-      inputs: []
+        x: 798.137192111595
+        y: 272.155018132482
+      inputs:
+        - id: node-13-in
+          type: flow
       outputs:
-        - id: node-7-out
+        - id: node-13-out
           type: flow
           label: On Read
-      triggerMode: scheduled
+      triggerMode: conditional
       time: 09:00
       from: dorg
-      subject: New Email
-      body: Email content here...
+      subject: Impersonation is not tolerated
+      body: |-
+        Dear employee,
+        DON'T BE WEIRD!
+        We have assigned you to behavioral training.
+
+        Br, HR
+      urgent: true
+      requiresResponse: false
+    - id: node-14
+      type: task
+      position:
+        x: 1039.3784733013463
+        y: 272.3521593948552
+      inputs:
+        - id: node-14-in
+          type: flow
+      outputs:
+        - id: node-14-out
+          type: flow
+          label: On Complete
+      triggerMode: conditional
+      time: 09:00
+      title: Attend Mandated Behavioral Training
+      description: You did something that others though was strange. Attend training to learn proper conduct.
+      priority: high
+      energyCost: 10
+      duration: 30
+    - id: node-16
+      type: effect
+      position:
+        x: 218.27877929445793
+        y: -25
+      inputs:
+        - id: node-16-in
+          type: flow
+      outputs:
+        - id: node-16-out
+          type: flow
+      effects: *a3
+    - id: node-18
+      type: dialogue
+      position:
+        x: 704.104152536191
+        y: -160.34997570490967
+      inputs:
+        - id: node-18-in
+          type: flow
+      outputs:
+        - id: node-18-out
+          type: flow
+      speaker: boss-chihuahua
+      text: Good meeting. Back to bork—I mean work!
+      emotion: neutral
+    - id: node-19
+      type: email
+      position:
+        x: 802.790697697598
+        y: 110.05579746538206
+      inputs:
+        - id: node-19-in
+          type: flow
+      outputs:
+        - id: node-19-out
+          type: flow
+          label: On Read
+      triggerMode: conditional
+      time: 09:00
+      from: boss-chihuahua
+      subject: Reschedule meeting
+      body: Something came up, may have to reschedule. I'll let you know.
       urgent: false
       requiresResponse: false
+    - id: node-20
+      type: meeting
+      position:
+        x: -494.98658517278506
+        y: -91.12999197020497
+      inputs: []
+      outputs:
+        - id: node-20-out
+          type: flow
+          label: After Meeting
+      triggerMode: scheduled
+      time: 08:00
+      duration: 30
+      title: Meeting with Boss
+      participants: *a4
+      energyCost: 10
+      stressCost: 10
   connections:
     - id: conn-1
       sourceNodeId: node-1
       sourcePortId: node-1-out-0
       targetNodeId: node-2
       targetPortId: node-2-in
-    - id: conn-2
-      sourceNodeId: node-1
-      sourcePortId: node-1-out-1
-      targetNodeId: node-3
-      targetPortId: node-3-in
     - id: conn-3
       sourceNodeId: node-1
       sourcePortId: node-1-out-2
       targetNodeId: node-4
       targetPortId: node-4-in
-    - id: conn-4
+    - id: conn-5
+      sourceNodeId: node-4
+      sourcePortId: node-4-true
+      targetNodeId: node-8
+      targetPortId: node-8-in
+    - id: conn-6
+      sourceNodeId: node-8
+      sourcePortId: node-8-out
+      targetNodeId: node-10
+      targetPortId: node-10-in
+    - id: conn-7
+      sourceNodeId: node-4
+      sourcePortId: node-4-false
+      targetNodeId: node-11
+      targetPortId: node-11-in
+    - id: conn-8
+      sourceNodeId: node-11
+      sourcePortId: node-11-out
+      targetNodeId: node-12
+      targetPortId: node-12-in
+    - id: conn-9
+      sourceNodeId: node-12
+      sourcePortId: node-12-out
+      targetNodeId: node-13
+      targetPortId: node-13-in
+    - id: conn-10
+      sourceNodeId: node-13
+      sourcePortId: node-13-out
+      targetNodeId: node-14
+      targetPortId: node-14-in
+    - id: conn-16
+      sourceNodeId: node-6
+      sourcePortId: node-6-out
+      targetNodeId: node-18
+      targetPortId: node-18-in
+    - id: conn-17
+      sourceNodeId: node-16
+      sourcePortId: node-16-out
+      targetNodeId: node-18
+      targetPortId: node-18-in
+    - id: conn-18
+      sourceNodeId: node-10
+      sourcePortId: node-10-out
+      targetNodeId: node-19
+      targetPortId: node-19-in
+    - id: conn-19
+      sourceNodeId: node-20
+      sourcePortId: node-20-out
+      targetNodeId: node-1
+      targetPortId: node-1-in
+    - id: conn-20
       sourceNodeId: node-2
       sourcePortId: node-2-true
+      targetNodeId: node-18
+      targetPortId: node-18-in
+    - id: conn-24
+      sourceNodeId: node-1
+      sourcePortId: node-1-out-1
+      targetNodeId: node-16
+      targetPortId: node-16-in
+    - id: conn-26
+      sourceNodeId: node-2
+      sourcePortId: node-2-false
       targetNodeId: node-6
       targetPortId: node-6-in
