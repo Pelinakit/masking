@@ -972,7 +972,7 @@ export class RoomScene extends Phaser.Scene {
 
   /**
    * Update hotspot proximity and show/hide prompts
-   * Shows prompt when player hitbox overlaps hotspot area
+   * Shows prompt and glow when player hitbox overlaps hotspot area
    */
   private updateHotspotProximity(): void {
     if (!this.player) return;
@@ -983,14 +983,46 @@ export class RoomScene extends Phaser.Scene {
     this.hotspots.forEach(hotspot => {
       const id = hotspot.getData('id');
       const prompt = this.interactionPrompts.get(id);
-      if (!prompt) return;
+      const sprite = this.hotspotSprites.get(id);
 
       // Check if player hitbox overlaps hotspot rectangle
       const hotspotBounds = hotspot.getBounds();
       const overlaps = Phaser.Geom.Rectangle.Overlaps(playerBounds, hotspotBounds);
 
-      prompt.setVisible(overlaps);
+      // Show/hide interaction prompt
+      if (prompt) {
+        prompt.setVisible(overlaps);
+      }
+
+      // Add/remove glow effect on sprite
+      if (sprite && sprite instanceof Phaser.GameObjects.Sprite) {
+        this.updateSpriteGlow(sprite, overlaps);
+      }
     });
+  }
+
+  /**
+   * Add or remove glow effect on a sprite
+   */
+  private updateSpriteGlow(sprite: Phaser.GameObjects.Sprite, shouldGlow: boolean): void {
+    const glowKey = 'interactionGlow';
+
+    if (shouldGlow) {
+      // Add glow if not already present
+      if (!sprite.getData(glowKey)) {
+        const glow = sprite.preFX?.addGlow(0xffffff, 4, 0, false, 0.1, 16);
+        if (glow) {
+          sprite.setData(glowKey, glow);
+        }
+      }
+    } else {
+      // Remove glow if present
+      const existingGlow = sprite.getData(glowKey);
+      if (existingGlow) {
+        sprite.preFX?.remove(existingGlow);
+        sprite.setData(glowKey, null);
+      }
+    }
   }
 
   /**
