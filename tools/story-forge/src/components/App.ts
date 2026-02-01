@@ -6,6 +6,7 @@ import { store } from '../state/store.js';
 import type { ViewType } from '../types/index.js';
 import { fileService } from '../services/FileService.js';
 import { NodeEditorView } from './NodeEditorView.js';
+import { TimelineView } from './TimelineView.js';
 
 export class App {
   private container: HTMLElement;
@@ -80,15 +81,13 @@ export class App {
   }
 
   private renderViewPlaceholder(view: ViewType): string {
-    // Return empty div for dynamic views
-    if (view === 'editor') {
+    // Return empty div for dynamic views that need component instances
+    if (view === 'timeline' || view === 'editor') {
       return '<div id="dynamic-view-container" style="width: 100%; height: 100%;"></div>';
     }
 
     // Return static HTML for other views
     switch (view) {
-      case 'timeline':
-        return this.renderTimelineView();
       case 'characters':
         return this.renderCharactersView();
       case 'arcs':
@@ -113,23 +112,11 @@ export class App {
     if (!container) return;
 
     // Render new view
-    if (view === 'editor') {
+    if (view === 'timeline') {
+      this.currentView = new TimelineView(container as HTMLElement);
+    } else if (view === 'editor') {
       this.currentView = new NodeEditorView(container as HTMLElement);
     }
-  }
-
-  private renderTimelineView(): string {
-    return `
-      <div class="panel">
-        <div class="panel-header">
-          <h2 class="panel-title">Timeline</h2>
-        </div>
-        <p class="text-dim">Timeline view will show week/day grid here.</p>
-        <p class="text-sm text-dim" style="margin-top: 16px;">
-          This is where you'll organize your game days into weeks and see an overview of content.
-        </p>
-      </div>
-    `;
   }
 
   private renderCharactersView(): string {

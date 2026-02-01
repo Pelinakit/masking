@@ -307,3 +307,217 @@ body {
   position: relative;
   background: var(--color-bg);
 }
+
+/* ============================================================================
+   Timeline View
+   ========================================================================= */
+
+.timeline-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+}
+
+.timeline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-lg);
+}
+
+.timeline-header h2 {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+/* Week Row */
+.week-row {
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+}
+
+.week-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.week-header h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+/* Day Grid */
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--spacing-md);
+}
+
+/* Day Card */
+.day-card {
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.day-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.day-card.dragging {
+  opacity: 0.5;
+}
+
+.day-card.drag-over {
+  border-color: var(--color-primary);
+  background: var(--color-bg-lighter);
+}
+
+.day-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+}
+
+.day-card-header h4 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.day-card-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: var(--spacing-xs);
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.icon-button:hover {
+  opacity: 1;
+}
+
+/* Stats */
+.day-card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-sm);
+  background: var(--color-bg-lighter);
+  border-radius: var(--radius-sm);
+}
+
+.stat-icon {
+  font-size: 20px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.stat-value {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+}
+
+/* Energy/Stress Bars */
+.day-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.energy-bar,
+.stress-bar {
+  position: relative;
+  height: 20px;
+  background: var(--color-bg-lighter);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.energy-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #fbbf24);
+  transition: width 0.3s;
+}
+
+.stress-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #fbbf24, #f87171);
+  transition: width 0.3s;
+}
+
+.energy-bar-label,
+.stress-bar-label {
+  position: relative;
+  display: block;
+  font-size: var(--font-size-sm);
+  text-align: center;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--color-text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Arc Tags */
+.day-card-arcs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.arc-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
