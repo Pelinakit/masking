@@ -22,9 +22,9 @@ As a script/story writer, I want a comprehensive authoring toolkit so that I can
 - [x] Week/day timeline view for organizing content
 - [x] Character database with voice/sprite configuration
 - [x] Story arc tracking across multiple days
-- [x] Asset manager for sprites, sounds, backgrounds (S31-S34) - COMPLETE
+- [x] Asset manager for sprites, sounds, backgrounds
 - [x] Speech-gen integration for dialogue audio preview - Web Audio API
-- [ ] YAML validation with helpful error messages (S35-S39 next)
+- [x] YAML validation with helpful error messages (S35-S39) - COMPLETE
 
 ## Progress
 
@@ -34,7 +34,7 @@ As a script/story writer, I want a comprehensive authoring toolkit so that I can
 - E1-E4: Core infrastructure
 - E5-E9: Systems integration
 
-**Track B: Story Forge Toolkit** (31/44 tasks - 70%) ✅
+**Track B: Story Forge Toolkit** (36/44 tasks - 82%) ✅
 
 1. **S1-S4: Foundation** ✅
 2. **S13-S20: Node Editor Core** ✅
@@ -43,13 +43,14 @@ As a script/story writer, I want a comprehensive authoring toolkit so that I can
 5. **S9-S12: Character Database** ✅
 6. **S27-S30: Story Arc Tracker** ✅
 7. **S31-S34: Asset Manager** ✅
-   - Tree-view asset browser
-   - Sprite/background image preview
-   - Audio playback controls
-   - Drag-to-insert asset paths
-   - Missing asset scanner
+8. **S35-S39: Validation Suite** ✅
+   - JSON schema validation
+   - Real-time error detection
+   - Dead-end node detector
+   - Stat balance analyzer
+   - Export panel (YAML/ZIP)
 
-### Major Milestone: 70% Complete
+### Major Milestone: Over 80% Complete
 
 The toolkit now has:
 1. **Timeline** → Organize weeks and days with arc indicators
@@ -57,36 +58,30 @@ The toolkit now has:
 3. **Characters** → Manage NPCs with voice preview
 4. **Story Arcs** → Track narrative threads across days
 5. **Assets** → Browse and preview game assets
-6. **YAML** → Export/import scenarios
+6. **Validation** → Check for errors and balance issues
+7. **YAML** → Export/import scenarios
 
 ### Next Priority
 
-**Validation Suite (S35-S39)**
-- S35: JSON schemas for YAML validation
-- S36: Real-time validator with error panel
-- S37: Dead-end detector for dialogue trees
-- S38: Stat balance analyzer
-- S39: Export panel
+**Polish (S40-S44)** - Final 8 tasks remaining
+- S40: Keyboard shortcuts (Ctrl+S, Ctrl+Z, Ctrl+Y)
+- S41: Auto-save with debouncing
+- S42: Dark/light theme toggle
+- S43: Documentation (README)
+- S44: Sample project with real content
 
-**Polish (S40-S44)**
-- S40: Keyboard shortcuts
-- S41: Auto-save
-- S42: Dark/light theme
-- S43: Documentation
-- S44: Sample project
-
-**Engine remaining (E7, E10-E13)**
+**Engine remaining (E7, E10-E13)** - 4 tasks
 - E7: MeetingScene YAML loading
 - E10-E13: Advanced systems
 
 ### Files Created/Modified
 
 **Story Forge**:
-- `src/components/App.ts` - Added AssetView integration
-- `src/components/AssetView.ts` - NEW: Asset browser component
-- `styles/main.css` - Asset view styles
+- `src/components/App.ts` - Added ValidationView integration
+- `src/components/ValidationView.ts` - NEW: Validation suite component
+- `styles/main.css` - Validation view styles
 
-### Commits Created (10 total)
+### Commits Created (11 total)
 
 1. `feat(tools): scaffold story-forge with server and state management`
 2. `feat(scripting): add scenario types and loader with hybrid time flow`
@@ -97,46 +92,57 @@ The toolkit now has:
 7. `feat(story-forge): implement timeline view for organizing game days`
 8. `feat(story-forge): implement character database with voice preview`
 9. `feat(story-forge): implement story arc tracker with continuity checker`
-10. `feat(story-forge): implement asset manager with preview and scanner` (pending)
+10. `feat(story-forge): implement asset manager with preview and scanner`
+11. `feat(story-forge): implement validation suite with error detection` (pending)
 
-### Asset Manager Features
+### Validation Suite Features
 
-**Asset Browser**:
-- Tree view with folders (sprites, backgrounds, audio)
-- Expandable/collapsible folders
-- File type icons (🎨 sprites, 🖼️ backgrounds, 🔊 sounds)
-- Asset count indicators
-- Real-time search filtering
+**Schema Validation** (S35):
+- Required field checking
+- Type validation
+- Metadata validation
+- Node structure validation
+- Real-time error messages
 
-**Preview Panel**:
-- Image preview with checkered background
-- Pixelated rendering for retro sprites
-- Audio playback controls (play/stop)
-- Asset path display
-- Copy path to clipboard
-- Drag-to-insert support
+**Error Detection** (S36):
+- Error/warning/info categorization
+- Location tracking
+- Helpful suggestions
+- Overview dashboard with stats
+- Detailed error panels
 
-**Missing Asset Scanner** (S34):
-- Scans project YAML files for asset references
-- Identifies broken asset paths
-- Lists files with missing references
-- Sample detection for demonstration
+**Dead-End Detector** (S37):
+- Finds nodes with no outputs
+- Identifies dialogue paths that trap players
+- Lists all dead-end nodes
+- Provides fix suggestions
+- Excludes valid ending nodes (events)
 
-**Asset Statistics**:
-- Total sprite count
-- Total background count
-- Total sound count
-- Footer summary display
+**Stat Balance Analyzer** (S38):
+- Sums energy/stress/hunger changes
+- Calculates per-path averages
+- Flags demanding days
+- Balance recommendations
+- Visual verdict (balanced/warning)
 
-**Sample Assets Loaded**:
-- 12 sprite assets (cat animations, furniture)
-- 6 background assets (room, PC screens)
-- Placeholder audio files
+**Export Panel** (S39):
+- Export current day as YAML
+- Export full project as ZIP
+- Export character database
+- Multiple format support
+- One-click downloads
+
+**Tabbed Interface**:
+- Overview: Summary dashboard
+- Schema: YAML validation errors
+- Dead Ends: Structural issues
+- Balance: Stat analysis
+- Export: File export options
 
 ## Status
 - Created: 2026-02-01
 - Phase: implementation (4.2)
 - Last Update: 2026-02-01
-- Progress: 40/57 total tasks (70%)
-- **Milestone**: 70% complete
-- Next: Validation suite (S35-S39) for error detection
+- Progress: 45/57 total tasks (79%)
+- **Milestone**: Nearly 80% complete
+- Next: Polish (S40-S44) for final refinements

@@ -10,6 +10,7 @@ import { TimelineView } from './TimelineView.js';
 import { CharacterView } from './CharacterView.js';
 import { ArcView } from './ArcView.js';
 import { AssetView } from './AssetView.js';
+import { ValidationView } from './ValidationView.js';
 
 export class App {
   private container: HTMLElement;
@@ -84,18 +85,8 @@ export class App {
   }
 
   private renderViewPlaceholder(view: ViewType): string {
-    // Return empty div for dynamic views that need component instances
-    if (view === 'timeline' || view === 'editor' || view === 'characters' || view === 'arcs' || view === 'assets') {
-      return '<div id="dynamic-view-container" style="width: 100%; height: 100%;"></div>';
-    }
-
-    // Return static HTML for other views
-    switch (view) {
-      case 'validate':
-        return this.renderValidateView();
-      default:
-        return '<p>View not implemented</p>';
-    }
+    // Return empty div for all views that need component instances
+    return '<div id="dynamic-view-container" style="width: 100%; height: 100%;"></div>';
   }
 
   private renderDynamicView(view: ViewType): void {
@@ -119,21 +110,9 @@ export class App {
       this.currentView = new ArcView(container as HTMLElement);
     } else if (view === 'assets') {
       this.currentView = new AssetView(container as HTMLElement);
+    } else if (view === 'validate') {
+      this.currentView = new ValidationView(container as HTMLElement);
     }
-  }
-
-  private renderValidateView(): string {
-    return `
-      <div class="panel">
-        <div class="panel-header">
-          <h2 class="panel-title">Validation</h2>
-        </div>
-        <p class="text-dim">Validation results will appear here.</p>
-        <p class="text-sm text-dim" style="margin-top: 16px;">
-          Check for errors, missing assets, and dead ends in your content.
-        </p>
-      </div>
-    `;
   }
 
   private renderError(message: string): void {
