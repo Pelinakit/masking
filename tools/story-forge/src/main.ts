@@ -3,6 +3,7 @@
  */
 
 import { App } from './components/App.js';
+import { entityRegistry } from './services/EntityRegistry.js';
 
 // Wait for DOM to be ready
 if (document.readyState === 'loading') {
@@ -11,12 +12,15 @@ if (document.readyState === 'loading') {
   init();
 }
 
-function init(): void {
+async function init(): Promise<void> {
   const appContainer = document.getElementById('app');
   if (!appContainer) {
     console.error('App container not found');
     return;
   }
+
+  // Initialize entity registry first
+  await entityRegistry.init();
 
   // Initialize app
   new App(appContainer);

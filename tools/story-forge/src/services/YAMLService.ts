@@ -4,7 +4,17 @@
  */
 
 import { stringify, parse } from 'yaml';
-import type { NodeGraph, BaseNode, DialogueNode as DialogueNodeData, ChoiceNode as ChoiceNodeData, ConditionNode as ConditionNodeData, EffectNode as EffectNodeData, Connection } from '../types/index.js';
+import type {
+  NodeGraph, BaseNode, Connection,
+  DialogueNode as DialogueNodeData,
+  ChoiceNode as ChoiceNodeData,
+  ConditionNode as ConditionNodeData,
+  EffectNode as EffectNodeData,
+  EmailNode as EmailNodeData,
+  MeetingNode as MeetingNodeData,
+  TaskNode as TaskNodeData,
+  MessageNode as MessageNodeData,
+} from '../types/index.js';
 
 export interface YAMLDialogueEvent {
   time: number;
@@ -15,6 +25,40 @@ export interface YAMLDialogueEvent {
   choices?: YAMLChoice[];
   condition?: any;
   effects?: any[];
+  // Game-specific event data
+  email?: {
+    from: string;
+    subject: string;
+    body: string;
+    arrivalTime: string;
+    urgent: boolean;
+    requiresResponse: boolean;
+  };
+  meeting?: {
+    title: string;
+    startTime: string;
+    duration: number;
+    participants: string[];
+    energyCost: number;
+    stressCost: number;
+    dialogueEntryId?: string;
+  };
+  task?: {
+    title: string;
+    description: string;
+    availableTime: string;
+    deadline?: string;
+    priority: 'low' | 'medium' | 'high';
+    energyCost: number;
+    duration: number;
+  };
+  message?: {
+    channel: 'slack' | 'teams' | 'chat';
+    from: string;
+    text: string;
+    arrivalTime: string;
+    requiresResponse: boolean;
+  };
 }
 
 export interface YAMLChoice {
@@ -31,20 +75,32 @@ export class YAMLService {
    * Convert node graph to YAML scenario format
    */
   graphToYAML(graph: NodeGraph): string {
+    console.log(`[YAMLService] graphToYAML called with ${graph.nodes.length} nodes`);
+
     const events = this.graphToEvents(graph);
 
+    // Also save raw graph data so nothing is lost
     const scenario = {
       metadata: {
         title: graph.metadata.title || 'Untitled Scenario',
         tags: graph.metadata.tags || [],
+        entryNodeId: graph.metadata.entryNodeId,
       },
       events: events,
+      // Store raw graph for lossless round-trip
+      _graph: {
+        nodes: graph.nodes,
+        connections: graph.connections,
+      },
     };
 
-    return stringify(scenario, {
+    const yaml = stringify(scenario, {
       indent: 2,
       lineWidth: 100,
     });
+
+    console.log(`[YAMLService] Generated YAML (${yaml.length} bytes)`);
+    return yaml;
   }
 
   /**
@@ -55,32 +111,46 @@ export class YAMLService {
     const nodeMap = new Map(graph.nodes.map(n => [n.id, n]));
     const connectionMap = this.buildConnectionMap(graph.connections);
 
-    // Find entry node
-    const entryNode = graph.nodes.find(n => n.id === graph.metadata.entryNodeId) || graph.nodes[0];
-    if (!entryNode) return events;
+    console.log(`[YAMLService] Converting ${graph.nodes.length} nodes to events`);
 
-    // Traverse graph starting from entry node
-    let currentNodeId: string | null = entryNode.id;
+    // First pass: traverse connected nodes starting from entry
+    const entryNode = graph.nodes.find(n => n.id === graph.metadata.entryNodeId) || graph.nodes[0];
+    const visited = new Set<string>();
     let eventIndex = 0;
 
-    const visited = new Set<string>();
+    if (entryNode) {
+      let currentNodeId: string | null = entryNode.id;
 
-    while (currentNodeId && !visited.has(currentNodeId)) {
-      visited.add(currentNodeId);
+      while (currentNodeId && !visited.has(currentNodeId)) {
+        visited.add(currentNodeId);
 
-      const node = nodeMap.get(currentNodeId);
-      if (!node) break;
+        const node = nodeMap.get(currentNodeId);
+        if (!node) break;
 
-      const event = this.nodeToEvent(node, eventIndex, nodeMap, connectionMap);
-      if (event) {
-        events.push(event);
-        eventIndex += 2; // Increment by 2 minutes for spacing
+        const event = this.nodeToEvent(node, eventIndex, nodeMap, connectionMap);
+        if (event) {
+          events.push(event);
+          eventIndex += 2;
+        }
+
+        currentNodeId = this.getNextNodeId(node, connectionMap);
       }
-
-      // Move to next node
-      currentNodeId = this.getNextNodeId(node, connectionMap);
     }
 
+    // Second pass: export any unvisited nodes (not connected to main flow)
+    for (const node of graph.nodes) {
+      if (!visited.has(node.id)) {
+        console.log(`[YAMLService] Adding unconnected node: ${node.id}`);
+        visited.add(node.id);
+        const event = this.nodeToEvent(node, eventIndex, nodeMap, connectionMap);
+        if (event) {
+          events.push(event);
+          eventIndex += 2;
+        }
+      }
+    }
+
+    console.log(`[YAMLService] Generated ${events.length} events`);
     return events;
   }
 
@@ -107,9 +177,102 @@ export class YAMLService {
         // Effects are typically merged into choices, not standalone events
         return null;
 
+      case 'email':
+        return this.emailNodeToEvent(node as EmailNodeData, time);
+
+      case 'meeting':
+        return this.meetingNodeToEvent(node as MeetingNodeData, time);
+
+      case 'task':
+        return this.taskNodeToEvent(node as TaskNodeData, time);
+
+      case 'message':
+        return this.messageNodeToEvent(node as MessageNodeData, time);
+
       default:
         return null;
     }
+  }
+
+  /**
+   * Convert EmailNode to YAML event
+   */
+  private emailNodeToEvent(node: EmailNodeData, time: number): YAMLDialogueEvent {
+    return {
+      time,
+      type: 'email',
+      speaker: node.from,
+      text: node.subject,
+      email: {
+        from: node.from,
+        subject: node.subject,
+        body: node.body,
+        arrivalTime: node.time,
+        urgent: node.urgent,
+        requiresResponse: node.requiresResponse,
+      },
+    };
+  }
+
+  /**
+   * Convert MeetingNode to YAML event
+   */
+  private meetingNodeToEvent(node: MeetingNodeData, time: number): YAMLDialogueEvent {
+    return {
+      time,
+      type: 'meeting',
+      speaker: 'Calendar',
+      text: node.title,
+      meeting: {
+        title: node.title,
+        startTime: node.time,
+        duration: node.duration,
+        participants: node.participants,
+        energyCost: node.energyCost,
+        stressCost: node.stressCost,
+        dialogueEntryId: node.dialogueEntryId,
+      },
+    };
+  }
+
+  /**
+   * Convert TaskNode to YAML event
+   */
+  private taskNodeToEvent(node: TaskNodeData, time: number): YAMLDialogueEvent {
+    return {
+      time,
+      type: 'task',
+      speaker: 'Tasks',
+      text: node.title,
+      task: {
+        title: node.title,
+        description: node.description,
+        availableTime: node.time,
+        deadline: node.deadline,
+        priority: node.priority,
+        energyCost: node.energyCost,
+        duration: node.duration,
+      },
+    };
+  }
+
+  /**
+   * Convert MessageNode to YAML event
+   */
+  private messageNodeToEvent(node: MessageNodeData, time: number): YAMLDialogueEvent {
+    return {
+      time,
+      type: 'message',
+      speaker: node.from,
+      text: node.text,
+      message: {
+        channel: node.channel,
+        from: node.from,
+        text: node.text,
+        arrivalTime: node.time,
+        requiresResponse: node.requiresResponse,
+      },
+    };
   }
 
   /**
@@ -361,6 +524,20 @@ export class YAMLService {
       throw new Error('Invalid YAML');
     }
 
+    // First check for raw graph data (lossless round-trip)
+    if (data._graph && data._graph.nodes) {
+      console.log(`[YAMLService] Loading from _graph section (${data._graph.nodes.length} nodes)`);
+      return {
+        nodes: data._graph.nodes,
+        connections: data._graph.connections || [],
+        metadata: {
+          entryNodeId: data.metadata?.entryNodeId || data._graph.nodes[0]?.id || '',
+          title: data.metadata?.title || 'Untitled',
+          tags: data.metadata?.tags || [],
+        },
+      };
+    }
+
     // For now, focus on meetings if they exist
     if (data.meetings && data.meetings.length > 0) {
       const firstMeeting = data.meetings[0];
@@ -375,7 +552,13 @@ export class YAMLService {
       return this.yamlToGraph(yamlText);
     }
 
-    throw new Error('No convertible content found in YAML');
+    // Return empty graph if nothing to convert
+    console.log('[YAMLService] No convertible content, returning empty graph');
+    return {
+      nodes: [],
+      connections: [],
+      metadata: { entryNodeId: '', title: data.metadata?.title || 'Untitled', tags: [] },
+    };
   }
 
   /**

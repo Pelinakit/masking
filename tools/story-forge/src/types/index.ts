@@ -30,7 +30,8 @@ export interface VoiceConfig {
   speedOffset: number;
 }
 
-export type Emotion = 'neutral' | 'happy' | 'sad' | 'angry' | 'anxious' | 'tired' | 'excited';
+// Matches speech-gen EmotionalTone for voice preview compatibility
+export type Emotion = 'neutral' | 'bubbly' | 'sad' | 'stern' | 'angry' | 'giggling' | 'laughing';
 
 export interface RelationshipConfig {
   defaultValue: number;
@@ -85,7 +86,7 @@ export interface AssetReference {
 // Node Editor
 // ============================================================================
 
-export type NodeType = 'dialogue' | 'choice' | 'condition' | 'effect' | 'event';
+export type NodeType = 'dialogue' | 'choice' | 'condition' | 'effect' | 'event' | 'email' | 'meeting' | 'task' | 'message';
 
 export interface BaseNode {
   id: string;
@@ -133,6 +134,58 @@ export interface ConditionNode extends BaseNode {
 export interface EffectNode extends BaseNode {
   type: 'effect';
   effects: Effect[];
+}
+
+// ============================================================================
+// Game-Specific Timed Event Nodes
+// ============================================================================
+
+// Trigger mode for timed events
+export type TriggerMode = 'scheduled' | 'conditional';
+
+export interface EmailNode extends BaseNode {
+  type: 'email';
+  triggerMode: TriggerMode;  // 'scheduled' = happens at time, 'conditional' = triggered by flow
+  time: string;              // HH:MM format - when email arrives (only for scheduled)
+  from: string;              // Character ID
+  subject: string;
+  body: string;
+  urgent: boolean;
+  requiresResponse: boolean;
+}
+
+export interface MeetingNode extends BaseNode {
+  type: 'meeting';
+  triggerMode: TriggerMode;
+  time: string;              // HH:MM format - meeting start time
+  duration: number;          // minutes
+  title: string;
+  participants: string[];    // Character IDs
+  energyCost: number;
+  stressCost: number;
+  dialogueEntryId?: string;  // ID of dialogue node to start on enter
+}
+
+export interface TaskNode extends BaseNode {
+  type: 'task';
+  triggerMode: TriggerMode;
+  time: string;              // HH:MM format - when task becomes available
+  deadline?: string;         // HH:MM format - deadline (if any)
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  energyCost: number;
+  duration: number;          // minutes to complete
+}
+
+export interface MessageNode extends BaseNode {
+  type: 'message';
+  triggerMode: TriggerMode;
+  time: string;              // HH:MM format - when message arrives
+  channel: 'slack' | 'teams' | 'chat';
+  from: string;              // Character ID
+  text: string;
+  requiresResponse: boolean;
 }
 
 export interface EventNode extends BaseNode {

@@ -1,0 +1,192 @@
+metadata:
+  title: Untitled
+  tags: []
+  entryNodeId: node-1
+events:
+  - time: 0
+    type: question
+    speaker: Narrator
+    text: "Choose an option:"
+    choices:
+      - text: Proceed with the meeting
+      - text: Turn camera off
+      - text: Mimic a potted plant
+  - time: 2
+    type: conditional
+    speaker: System
+    text: Conditional event
+    condition: &a1
+      type: stat
+      operator: ">"
+      target: energy
+      value: 50
+  - time: 4
+    type: conditional
+    speaker: System
+    text: Conditional event
+    condition: &a2
+      type: stat
+      operator: ">"
+      target: energy
+      value: 50
+  - time: 6
+    type: conditional
+    speaker: System
+    text: Conditional event
+    condition: &a3
+      type: stat
+      operator: ">"
+      target: energy
+      value: 50
+  - time: 8
+    type: email
+    speaker: dorg
+    text: New Email
+    email:
+      from: dorg
+      subject: New Email
+      body: Email content here...
+      arrivalTime: 09:00
+      urgent: false
+      requiresResponse: false
+_graph:
+  nodes:
+    - id: node-1
+      type: choice
+      position:
+        x: -363
+        y: -185
+      inputs:
+        - id: node-1-in
+          type: flow
+      outputs:
+        - id: node-1-out-0
+          type: flow
+          label: Proceed with the mee
+        - id: node-1-out-1
+          type: flow
+          label: Turn camera off
+        - id: node-1-out-2
+          type: flow
+          label: Mimic a potted plant
+      options:
+        - id: node-1-opt-0
+          text: Proceed with the meeting
+          effects: []
+          outputPortId: node-1-out-0
+        - id: node-1-opt-1
+          text: Turn camera off
+          effects: []
+          outputPortId: node-1-out-1
+        - id: node-1-opt-2
+          text: Mimic a potted plant
+          effects: []
+          outputPortId: node-1-out-2
+    - id: node-2
+      type: condition
+      position:
+        x: 86
+        y: -172
+      inputs:
+        - id: node-2-in
+          type: flow
+      outputs:
+        - id: node-2-true
+          type: flow
+          label: "True"
+        - id: node-2-false
+          type: flow
+          label: "False"
+      condition: *a1
+      trueOutputId: node-2-true
+      falseOutputId: node-2-false
+    - id: node-3
+      type: condition
+      position:
+        x: 21
+        y: -14
+      inputs:
+        - id: node-3-in
+          type: flow
+      outputs:
+        - id: node-3-true
+          type: flow
+          label: "True"
+        - id: node-3-false
+          type: flow
+          label: "False"
+      condition: *a2
+      trueOutputId: node-3-true
+      falseOutputId: node-3-false
+    - id: node-4
+      type: condition
+      position:
+        x: -30
+        y: 126
+      inputs:
+        - id: node-4-in
+          type: flow
+      outputs:
+        - id: node-4-true
+          type: flow
+          label: "True"
+        - id: node-4-false
+          type: flow
+          label: "False"
+      condition: *a3
+      trueOutputId: node-4-true
+      falseOutputId: node-4-false
+    - id: node-6
+      type: effect
+      position:
+        x: 408.8322996054573
+        y: -173.07625302606502
+      inputs:
+        - id: node-6-in
+          type: flow
+      outputs:
+        - id: node-6-out
+          type: flow
+      effects:
+        - type: relationship
+          target: energy
+          operation: "-"
+          value: 10
+    - id: node-7
+      type: email
+      position:
+        x: 397.9089706805054
+        y: 85.10455146597472
+      inputs: []
+      outputs:
+        - id: node-7-out
+          type: flow
+          label: On Read
+      triggerMode: scheduled
+      time: 09:00
+      from: dorg
+      subject: New Email
+      body: Email content here...
+      urgent: false
+      requiresResponse: false
+  connections:
+    - id: conn-1
+      sourceNodeId: node-1
+      sourcePortId: node-1-out-0
+      targetNodeId: node-2
+      targetPortId: node-2-in
+    - id: conn-2
+      sourceNodeId: node-1
+      sourcePortId: node-1-out-1
+      targetNodeId: node-3
+      targetPortId: node-3-in
+    - id: conn-3
+      sourceNodeId: node-1
+      sourcePortId: node-1-out-2
+      targetNodeId: node-4
+      targetPortId: node-4-in
+    - id: conn-4
+      sourceNodeId: node-2
+      sourcePortId: node-2-true
+      targetNodeId: node-6
+      targetPortId: node-6-in

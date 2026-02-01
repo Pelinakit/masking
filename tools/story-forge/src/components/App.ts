@@ -18,6 +18,7 @@ import { ValidationView } from './ValidationView.js';
 export class App {
   private container: HTMLElement;
   private currentView: any = null;
+  private currentViewType: ViewType | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -42,11 +43,30 @@ export class App {
       this.handleSave();
     });
 
-    // Subscribe to state changes
-    store.subscribe(() => this.render());
+    // Subscribe to state changes - only re-render when view changes or on initial render
+    store.subscribe((state) => {
+      // Only full re-render if view changed
+      if (state.currentView !== this.currentViewType) {
+        this.render();
+      } else {
+        // Just update header (save button state, etc.)
+        this.updateHeader();
+      }
+    });
 
     // Initial render
     this.render();
+  }
+
+  /**
+   * Update just the header without re-rendering the whole app
+   */
+  private updateHeader(): void {
+    const state = store.getState();
+    const saveBtn = this.container.querySelector('#save-btn') as HTMLButtonElement;
+    if (saveBtn) {
+      saveBtn.disabled = !state.isDirty;
+    }
   }
 
   private render(): void {
@@ -96,6 +116,7 @@ export class App {
 
     this.attachEventListeners();
     this.renderDynamicView(state.currentView);
+    this.currentViewType = state.currentView;
   }
 
   private renderNavItem(view: ViewType, label: string): string {

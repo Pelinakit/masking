@@ -10,10 +10,18 @@ import { DialogueNode } from './nodes/DialogueNode.js';
 import { ChoiceNode } from './nodes/ChoiceNode.js';
 import { ConditionNode } from './nodes/ConditionNode.js';
 import { EffectNode } from './nodes/EffectNode.js';
+import { EmailNode } from './nodes/EmailNode.js';
+import { MeetingNode } from './nodes/MeetingNode.js';
+import { TaskNode } from './nodes/TaskNode.js';
+import { MessageNode } from './nodes/MessageNode.js';
+import { PropertyPanel } from './PropertyPanel.js';
 import type { NodeGraph, NodePort } from '../types/index.js';
+
+export type ChangeCallback = () => void;
 
 export class NodeEditor {
   private canvas: Canvas;
+  private container: HTMLElement;
   private nodes: Map<string, Node> = new Map();
   private connections: Map<string, Connection> = new Map();
 
@@ -30,8 +38,30 @@ export class NodeEditor {
   private nextNodeId = 1;
   private nextConnectionId = 1;
 
+  // Property panel for editing nodes
+  private propertyPanel: PropertyPanel;
+  private editingNode: Node | null = null;
+
+  // Change tracking
+  private changeCallbacks: Set<ChangeCallback> = new Set();
+
+  // Undo/redo history
+  private history: NodeGraph[] = [];
+  private historyIndex = -1;
+  private maxHistory = 50;
+
   constructor(container: HTMLElement) {
+    this.container = container;
     this.canvas = new Canvas(container);
+
+    // Create property panel
+    this.propertyPanel = new PropertyPanel(container);
+    this.propertyPanel.onUpdate((nodeId, updates) => {
+      this.updateNodeProperties(nodeId, updates);
+    });
+    this.propertyPanel.onClose(() => {
+      this.editingNode = null;
+    });
 
     // Register callbacks
     this.canvas.onRender(() => this.render());
@@ -42,6 +72,89 @@ export class NodeEditor {
 
     // Initial render
     this.canvas.render();
+
+    // Save initial state
+    this.saveToHistory();
+  }
+
+  /**
+   * Register a callback for when the graph changes
+   */
+  onChange(callback: ChangeCallback): void {
+    this.changeCallbacks.add(callback);
+  }
+
+  /**
+   * Notify listeners of a change
+   */
+  private notifyChange(): void {
+    this.changeCallbacks.forEach(cb => cb());
+  }
+
+  /**
+   * Save current state to history
+   */
+  private saveToHistory(): void {
+    // Remove any redo states
+    this.history = this.history.slice(0, this.historyIndex + 1);
+
+    // Add current state
+    const state = this.exportGraph();
+    this.history.push(JSON.parse(JSON.stringify(state)));
+
+    // Limit history size
+    if (this.history.length > this.maxHistory) {
+      this.history.shift();
+    } else {
+      this.historyIndex++;
+    }
+  }
+
+  /**
+   * Undo last change
+   */
+  undo(): boolean {
+    if (this.historyIndex <= 0) return false;
+
+    this.historyIndex--;
+    const state = this.history[this.historyIndex];
+    this.importGraphWithoutHistory(state);
+    this.notifyChange();
+    return true;
+  }
+
+  /**
+   * Redo last undone change
+   */
+  redo(): boolean {
+    if (this.historyIndex >= this.history.length - 1) return false;
+
+    this.historyIndex++;
+    const state = this.history[this.historyIndex];
+    this.importGraphWithoutHistory(state);
+    this.notifyChange();
+    return true;
+  }
+
+  /**
+   * Update node properties from property panel
+   */
+  private updateNodeProperties(nodeId: string, updates: Record<string, any>): void {
+    const node = this.nodes.get(nodeId);
+    if (!node) return;
+
+    node.updateProperties(updates);
+    this.canvas.render();
+    this.saveToHistory();
+    this.notifyChange();
+  }
+
+  /**
+   * Open property panel for a node
+   */
+  private openPropertyPanel(node: Node): void {
+    this.editingNode = node;
+    this.propertyPanel.show(node);
   }
 
   /**
@@ -49,6 +162,18 @@ export class NodeEditor {
    */
   private setupEventListeners(): void {
     const canvasElement = this.canvas['canvas'];
+
+    // Double-click to edit node
+    canvasElement.addEventListener('dblclick', (e) => {
+      const worldPos = this.canvas.screenToWorld({ x: e.clientX, y: e.clientY });
+
+      for (const node of this.nodes.values()) {
+        if (node.containsPoint(worldPos.x, worldPos.y)) {
+          this.openPropertyPanel(node);
+          return;
+        }
+      }
+    });
 
     // Mouse down for dragging/connecting
     canvasElement.addEventListener('mousedown', (e) => {
@@ -117,6 +242,8 @@ export class NodeEditor {
       if (this.draggingNode) {
         this.draggingNode.stopDrag();
         this.draggingNode = null;
+        this.saveToHistory();
+        this.notifyChange();
       }
 
       if (this.connectingFromPort) {
@@ -150,11 +277,19 @@ export class NodeEditor {
 
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
+      // Don't handle shortcuts if we're in an input field
+      if ((e.target as HTMLElement).tagName === 'INPUT' ||
+          (e.target as HTMLElement).tagName === 'TEXTAREA' ||
+          (e.target as HTMLElement).tagName === 'SELECT') {
+        return;
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
         this.deleteSelected();
       } else if (e.key === 'Escape') {
         this.clearSelection();
         this.hideContextMenu();
+        this.propertyPanel.hide();
       } else if (e.ctrlKey || e.metaKey) {
         if (e.key === 'a') {
           e.preventDefault();
@@ -162,6 +297,16 @@ export class NodeEditor {
         } else if (e.key === 'd') {
           e.preventDefault();
           this.duplicateSelected();
+        } else if (e.key === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            this.redo();
+          } else {
+            this.undo();
+          }
+        } else if (e.key === 'y') {
+          e.preventDefault();
+          this.redo();
         }
       }
     });
@@ -266,6 +411,8 @@ export class NodeEditor {
 
     this.connections.set(id, connection);
     this.canvas.render();
+    this.saveToHistory();
+    this.notifyChange();
 
     return connection;
   }
@@ -274,8 +421,12 @@ export class NodeEditor {
    * Add a node to the editor
    */
   addNode(node: Node): void {
+    console.log(`[NodeEditor] addNode: ${node.id} (${node.type}), Map size before: ${this.nodes.size}`);
     this.nodes.set(node.id, node);
+    console.log(`[NodeEditor] addNode: Map size after: ${this.nodes.size}`);
     this.canvas.render();
+    this.saveToHistory();
+    this.notifyChange();
   }
 
   /**
@@ -361,9 +512,102 @@ export class NodeEditor {
   }
 
   /**
+   * Create a new email node
+   */
+  createEmailNode(x: number, y: number): EmailNode {
+    const node = new EmailNode({
+      id: `node-${this.nextNodeId++}`,
+      type: 'email',
+      position: { x, y },
+      triggerMode: 'scheduled',
+      time: '09:00',
+      from: '',
+      subject: 'New Email',
+      body: 'Email content here...',
+      urgent: false,
+      requiresResponse: false,
+      inputs: [],
+      outputs: [],
+    });
+
+    this.addNode(node);
+    return node;
+  }
+
+  /**
+   * Create a new meeting node
+   */
+  createMeetingNode(x: number, y: number): MeetingNode {
+    const node = new MeetingNode({
+      id: `node-${this.nextNodeId++}`,
+      type: 'meeting',
+      position: { x, y },
+      triggerMode: 'scheduled',
+      time: '10:00',
+      duration: 30,
+      title: 'Team Meeting',
+      participants: [],
+      energyCost: 15,
+      stressCost: 10,
+      inputs: [],
+      outputs: [],
+    });
+
+    this.addNode(node);
+    return node;
+  }
+
+  /**
+   * Create a new task node
+   */
+  createTaskNode(x: number, y: number): TaskNode {
+    const node = new TaskNode({
+      id: `node-${this.nextNodeId++}`,
+      type: 'task',
+      position: { x, y },
+      triggerMode: 'scheduled',
+      time: '09:00',
+      title: 'New Task',
+      description: 'Task description...',
+      priority: 'medium',
+      energyCost: 10,
+      duration: 30,
+      inputs: [],
+      outputs: [],
+    });
+
+    this.addNode(node);
+    return node;
+  }
+
+  /**
+   * Create a new message node
+   */
+  createMessageNode(x: number, y: number): MessageNode {
+    const node = new MessageNode({
+      id: `node-${this.nextNodeId++}`,
+      type: 'message',
+      position: { x, y },
+      triggerMode: 'scheduled',
+      time: '09:00',
+      channel: 'slack',
+      from: '',
+      text: 'Hey! Got a minute?',
+      requiresResponse: false,
+      inputs: [],
+      outputs: [],
+    });
+
+    this.addNode(node);
+    return node;
+  }
+
+  /**
    * Delete selected nodes and connections
    */
   private deleteSelected(): void {
+    if (this.selectedNodes.size === 0 && this.selectedConnections.size === 0) return;
+
     // Delete selected nodes
     this.selectedNodes.forEach(nodeId => {
       this.nodes.delete(nodeId);
@@ -386,6 +630,8 @@ export class NodeEditor {
 
     this.clearSelection();
     this.canvas.render();
+    this.saveToHistory();
+    this.notifyChange();
   }
 
   /**
@@ -483,8 +729,17 @@ export class NodeEditor {
    * Export graph to data format
    */
   exportGraph(): NodeGraph {
-    const nodes = Array.from(this.nodes.values()).map(n => n.toData());
+    console.log(`[NodeEditor] exportGraph - nodes Map size: ${this.nodes.size}`);
+    console.log(`[NodeEditor] exportGraph - connections Map size: ${this.connections.size}`);
+
+    const nodes = Array.from(this.nodes.values()).map(n => {
+      const data = n.toData();
+      console.log(`[NodeEditor] Exporting node: ${data.id} (${data.type})`);
+      return data;
+    });
     const connections = Array.from(this.connections.values()).map(c => c.toData());
+
+    console.log(`[NodeEditor] Exported ${nodes.length} nodes, ${connections.length} connections`);
 
     return {
       nodes,
@@ -501,12 +756,32 @@ export class NodeEditor {
    * Import graph from data format
    */
   importGraph(graph: NodeGraph): void {
+    this.importGraphWithoutHistory(graph);
+    this.history = [];
+    this.historyIndex = -1;
+    this.saveToHistory();
+  }
+
+  /**
+   * Import graph without affecting history (for undo/redo)
+   */
+  private importGraphWithoutHistory(graph: NodeGraph): void {
     this.nodes.clear();
     this.connections.clear();
+
+    // Update nextNodeId to be higher than any imported node
+    let maxNodeId = 0;
+    let maxConnId = 0;
 
     // Import nodes
     graph.nodes.forEach(nodeData => {
       let node: Node;
+
+      // Extract numeric ID
+      const nodeIdMatch = nodeData.id.match(/\d+/);
+      if (nodeIdMatch) {
+        maxNodeId = Math.max(maxNodeId, parseInt(nodeIdMatch[0]));
+      }
 
       switch (nodeData.type) {
         case 'dialogue':
@@ -521,6 +796,18 @@ export class NodeEditor {
         case 'effect':
           node = new EffectNode(nodeData as any);
           break;
+        case 'email':
+          node = new EmailNode(nodeData as any);
+          break;
+        case 'meeting':
+          node = new MeetingNode(nodeData as any);
+          break;
+        case 'task':
+          node = new TaskNode(nodeData as any);
+          break;
+        case 'message':
+          node = new MessageNode(nodeData as any);
+          break;
         default:
           return;
       }
@@ -530,9 +817,18 @@ export class NodeEditor {
 
     // Import connections
     graph.connections.forEach(connData => {
+      const connIdMatch = connData.id.match(/\d+/);
+      if (connIdMatch) {
+        maxConnId = Math.max(maxConnId, parseInt(connIdMatch[0]));
+      }
+
       const connection = new Connection(connData);
       this.connections.set(connection.id, connection);
     });
+
+    // Update ID counters
+    this.nextNodeId = maxNodeId + 1;
+    this.nextConnectionId = maxConnId + 1;
 
     this.canvas.render();
   }

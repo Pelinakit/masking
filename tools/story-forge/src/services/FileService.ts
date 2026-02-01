@@ -60,6 +60,8 @@ class FileService {
    * Write a file
    */
   async writeFile(path: string, content: string): Promise<void> {
+    console.log(`[FileService] Writing to: ${path} (${content.length} bytes)`);
+
     const response = await fetch(`${this.baseURL}/file`, {
       method: 'POST',
       headers: {
@@ -69,6 +71,7 @@ class FileService {
     });
 
     const result: APIResponse = await response.json();
+    console.log(`[FileService] Write response:`, result);
 
     if (!result.success) {
       throw new Error(result.error || 'Failed to write file');

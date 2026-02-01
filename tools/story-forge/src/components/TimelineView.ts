@@ -1,10 +1,16 @@
 /**
  * TimelineView Component
  * Week/day grid for organizing game content
+ * Connected to actual game YAML scenario files
  */
 
 import { store } from '../state/store.js';
+import { fileService } from '../services/FileService.js';
+import { parse } from 'yaml';
 import type { Week, DayReference, DaySummary, StoryArc } from '../types/index.js';
+
+// Path to scenarios directory (relative to project root)
+const SCENARIOS_PATH = 'public/data/stories/scenarios';
 
 export class TimelineView {
   private container: HTMLElement;
@@ -12,20 +18,44 @@ export class TimelineView {
   private draggedDay: DayReference | null = null;
   private draggedFromWeek: number | null = null;
   private arcs: StoryArc[] = [];
+  private loading: boolean = true;
 
   constructor(container: HTMLElement) {
     this.container = container;
     this.loadArcs();
-    this.loadWeeks();
+    this.init();
+  }
+
+  /**
+   * Initialize and load data
+   */
+  private async init(): Promise<void> {
+    this.renderLoading();
+    await this.loadWeeksFromFiles();
+    this.loading = false;
     this.render();
+  }
+
+  /**
+   * Render loading state
+   */
+  private renderLoading(): void {
+    this.container.innerHTML = `
+      <div class="timeline-view">
+        <div class="timeline-header">
+          <h2>Timeline</h2>
+        </div>
+        <div class="timeline-content" style="display: flex; justify-content: center; padding: 60px;">
+          <p class="text-dim">Loading scenarios...</p>
+        </div>
+      </div>
+    `;
   }
 
   /**
    * Load arcs from shared storage
    */
   private loadArcs(): void {
-    // In a real implementation, this would load from the store
-    // For now, we'll use the same sample arcs as ArcView
     this.arcs = [
       {
         id: 'arc-client-presentation',
@@ -59,57 +89,193 @@ export class TimelineView {
   }
 
   /**
-   * Load weeks from state or create defaults
+   * Load weeks from actual YAML files
    */
-  private loadWeeks(): void {
-    const state = store.getState();
+  private async loadWeeksFromFiles(): Promise<void> {
+    try {
+      // List all scenario files
+      const files = await fileService.listFiles(SCENARIOS_PATH);
+      const yamlFiles = files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
 
-    // For now, create sample weeks
-    this.weeks = [
-      {
-        number: 1,
-        days: [
-          this.createDayReference('Monday', 1, 'week1-monday.yaml'),
-          this.createDayReference('Tuesday', 1, 'week1-tuesday.yaml'),
-          this.createDayReference('Wednesday', 1, 'week1-wednesday.yaml'),
-          this.createDayReference('Thursday', 1, 'week1-thursday.yaml'),
-          this.createDayReference('Friday', 1, 'week1-friday.yaml'),
-        ],
-      },
-      {
-        number: 2,
-        days: [
-          this.createDayReference('Monday', 2, 'week2-monday.yaml'),
-          this.createDayReference('Tuesday', 2, 'week2-tuesday.yaml'),
-          this.createDayReference('Wednesday', 2, 'week2-wednesday.yaml'),
-          this.createDayReference('Thursday', 2, 'week2-thursday.yaml'),
-          this.createDayReference('Friday', 2, 'week2-friday.yaml'),
-        ],
-      },
-    ];
+      // Group files by week
+      const weekMap = new Map<number, DayReference[]>();
+
+      for (const fileName of yamlFiles) {
+        const filePath = `${SCENARIOS_PATH}/${fileName}`;
+
+        // Try to load the file content to get metadata
+        let weekNum = 1;
+        let dayName = 'Unknown';
+        let summary: DaySummary = this.createEmptySummary();
+
+        try {
+          const fileData = await fileService.readFile(filePath);
+          const data = parse(fileData.content);
+
+          // Extract week/day from metadata if available
+          if (data?.metadata) {
+            weekNum = data.metadata.week ?? 1;
+            dayName = data.metadata.day ?? this.extractDayFromFilename(fileName);
+          } else {
+            // Fallback: try to parse from filename (e.g., "week1-monday.yaml")
+            const match = fileName.match(/week(\d+)-(\w+)\.ya?ml$/i);
+            if (match) {
+              weekNum = parseInt(match[1]);
+              dayName = match[2].charAt(0).toUpperCase() + match[2].slice(1);
+            } else {
+              // Try other common patterns like "monday-full-day.yaml"
+              dayName = this.extractDayFromFilename(fileName);
+            }
+          }
+
+          summary = this.parseYAMLStats(fileData.content);
+        } catch (err) {
+          console.warn(`Could not load ${fileName}:`, err);
+          continue;
+        }
+
+        // Capitalize day name
+        dayName = dayName.charAt(0).toUpperCase() + dayName.slice(1).toLowerCase();
+
+        const dayId = `week${weekNum}-${dayName.toLowerCase()}`;
+        const dayRef: DayReference = {
+          id: dayId,
+          name: dayName,
+          filePath: filePath,
+          arcs: this.getArcsForDay(dayId).map(a => a.id),
+          summary,
+        };
+
+        if (!weekMap.has(weekNum)) {
+          weekMap.set(weekNum, []);
+        }
+        weekMap.get(weekNum)!.push(dayRef);
+      }
+
+      // Convert to weeks array, sorted by week number
+      this.weeks = Array.from(weekMap.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([number, days]) => ({
+          number,
+          days: this.sortDays(days),
+        }));
+
+      // If no files found, weeks stays empty - we'll show empty state
+
+    } catch (err) {
+      console.error('Failed to load scenarios:', err);
+      // On error, show empty state
+      this.weeks = [];
+    }
   }
 
   /**
-   * Create a day reference with sample data
+   * Sort days in weekday order
    */
-  private createDayReference(name: string, week: number, fileName: string): DayReference {
-    const dayId = `week${week}-${name.toLowerCase()}`;
-    const dayArcs = this.getArcsForDay(dayId);
+  private sortDays(days: DayReference[]): DayReference[] {
+    const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    return days.sort((a, b) => {
+      const aIndex = dayOrder.indexOf(a.name.toLowerCase());
+      const bIndex = dayOrder.indexOf(b.name.toLowerCase());
+      return aIndex - bIndex;
+    });
+  }
 
+  /**
+   * Extract day name from filename (e.g., "monday-full-day.yaml" -> "Monday")
+   */
+  private extractDayFromFilename(fileName: string): string {
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const lowerName = fileName.toLowerCase();
+
+    for (const day of dayNames) {
+      if (lowerName.includes(day)) {
+        return day.charAt(0).toUpperCase() + day.slice(1);
+      }
+    }
+
+    // Return filename without extension as fallback
+    return fileName.replace(/\.ya?ml$/i, '').replace(/-/g, ' ');
+  }
+
+  /**
+   * Create empty summary
+   */
+  private createEmptySummary(): DaySummary {
     return {
-      id: dayId,
-      name,
-      filePath: `/data/stories/scenarios/${fileName}`,
-      arcs: dayArcs.map(arc => arc.id),
-      summary: {
-        emailCount: Math.floor(Math.random() * 8) + 2,
-        meetingCount: Math.floor(Math.random() * 4) + 1,
-        taskCount: Math.floor(Math.random() * 6) + 2,
-        eventCount: Math.floor(Math.random() * 5) + 1,
-        totalEnergyDrain: Math.floor(Math.random() * 100) + 50,
-        totalStressGain: Math.floor(Math.random() * 80) + 20,
-      },
+      emailCount: 0,
+      meetingCount: 0,
+      taskCount: 0,
+      eventCount: 0,
+      totalEnergyDrain: 0,
+      totalStressGain: 0,
     };
+  }
+
+  /**
+   * Parse YAML content and extract stats
+   */
+  private parseYAMLStats(content: string): DaySummary {
+    try {
+      const data = parse(content);
+      if (!data) return this.createEmptySummary();
+
+      const emailCount = Array.isArray(data.emails) ? data.emails.length : 0;
+      const meetingCount = Array.isArray(data.meetings) ? data.meetings.length : 0;
+      const taskCount = Array.isArray(data.tasks) ? data.tasks.length : 0;
+      const eventCount = Array.isArray(data.events) ? data.events.length : 0;
+
+      // Calculate total energy drain and stress gain from all sources
+      let totalEnergyDrain = 0;
+      let totalStressGain = 0;
+
+      // From meetings
+      if (Array.isArray(data.meetings)) {
+        data.meetings.forEach((meeting: any) => {
+          if (Array.isArray(meeting.events)) {
+            meeting.events.forEach((event: any) => {
+              if (Array.isArray(event.choices)) {
+                event.choices.forEach((choice: any) => {
+                  if (choice.energyCost) totalEnergyDrain += choice.energyCost;
+                  if (choice.stressCost) totalStressGain += choice.stressCost;
+                });
+              }
+            });
+          }
+        });
+      }
+
+      // From tasks
+      if (Array.isArray(data.tasks)) {
+        data.tasks.forEach((task: any) => {
+          if (task.energyCost) totalEnergyDrain += task.energyCost;
+        });
+      }
+
+      // From random events
+      if (Array.isArray(data.events)) {
+        data.events.forEach((event: any) => {
+          if (Array.isArray(event.choices)) {
+            event.choices.forEach((choice: any) => {
+              if (choice.energyCost) totalEnergyDrain += Math.abs(choice.energyCost);
+              if (choice.stressCost) totalStressGain += Math.abs(choice.stressCost);
+            });
+          }
+        });
+      }
+
+      return {
+        emailCount,
+        meetingCount,
+        taskCount,
+        eventCount,
+        totalEnergyDrain,
+        totalStressGain,
+      };
+    } catch (err) {
+      console.warn('Failed to parse YAML stats:', err);
+      return this.createEmptySummary();
+    }
   }
 
   /**
@@ -120,10 +286,21 @@ export class TimelineView {
       <div class="timeline-view">
         <div class="timeline-header">
           <h2>Timeline</h2>
-          <button class="button" id="add-week-btn">+ Add Week</button>
+          <div class="timeline-actions">
+            <button class="button button-secondary" id="refresh-btn" title="Reload from files">
+              🔄 Refresh
+            </button>
+            <button class="button" id="add-week-btn">+ Add Week</button>
+          </div>
         </div>
         <div class="timeline-content">
-          ${this.weeks.map(week => this.renderWeek(week)).join('')}
+          ${this.weeks.length === 0
+            ? `<div class="empty-state" style="padding: 60px; text-align: center;">
+                <p class="text-dim" style="margin-bottom: 20px;">No scenario files found in <code>public/data/stories/scenarios/</code></p>
+                <button class="button" id="create-first-day-btn">+ Create First Day</button>
+              </div>`
+            : this.weeks.map(week => this.renderWeek(week)).join('')
+          }
         </div>
       </div>
     `;
@@ -155,10 +332,12 @@ export class TimelineView {
    */
   private renderDayCard(day: DayReference, weekNumber: number): string {
     const dayArcs = this.getArcsForDay(day.id);
+    const hasContent = day.summary.emailCount > 0 || day.summary.meetingCount > 0 || day.summary.taskCount > 0;
 
     return `
-      <div class="day-card"
+      <div class="day-card ${hasContent ? 'has-content' : 'empty'}"
            data-day-id="${day.id}"
+           data-file-path="${day.filePath}"
            data-week="${weekNumber}"
            draggable="true">
         ${dayArcs.length > 0 ? `
@@ -225,6 +404,16 @@ export class TimelineView {
    * Attach event listeners
    */
   private attachEventListeners(): void {
+    // Refresh button
+    this.container.querySelector('#refresh-btn')?.addEventListener('click', () => {
+      this.init();
+    });
+
+    // Create first day button (empty state)
+    this.container.querySelector('#create-first-day-btn')?.addEventListener('click', () => {
+      this.createNewDay(1);
+    });
+
     // Add week button
     this.container.querySelector('#add-week-btn')?.addEventListener('click', () => {
       this.addWeek();
@@ -274,58 +463,104 @@ export class TimelineView {
   }
 
   /**
-   * Add a new week
+   * Add a new week - just prompts to create a day for that week
    */
   private addWeek(): void {
-    const newWeekNumber = this.weeks.length + 1;
-    const newWeek: Week = {
-      number: newWeekNumber,
-      days: [],
-    };
+    const newWeekNumber = this.weeks.length > 0
+      ? Math.max(...this.weeks.map(w => w.number)) + 1
+      : 1;
 
-    // Add default workweek
-    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    daysOfWeek.forEach(dayName => {
-      newWeek.days.push(
-        this.createDayReference(dayName, newWeekNumber, `week${newWeekNumber}-${dayName.toLowerCase()}.yaml`)
-      );
-    });
-
-    this.weeks.push(newWeek);
-    this.render();
-
-    store.setState({ isDirty: true });
+    this.createNewDay(newWeekNumber);
   }
 
   /**
    * Add a new day to a week
    */
   private addDay(weekNumber: number): void {
-    const dayName = prompt('Enter day name:');
-    if (!dayName) return;
-
-    const week = this.weeks.find(w => w.number === weekNumber);
-    if (!week) return;
-
-    const newDay = this.createDayReference(
-      dayName,
-      weekNumber,
-      `week${weekNumber}-${dayName.toLowerCase().replace(/\s+/g, '-')}.yaml`
-    );
-
-    week.days.push(newDay);
-    this.render();
-
-    store.setState({ isDirty: true });
+    this.createNewDay(weekNumber);
   }
 
   /**
-   * Edit a day
+   * Create a new day file and open it in the editor
    */
-  private editDay(dayId: string): void {
-    console.log('Edit day:', dayId);
-    // TODO: Switch to editor view with this day loaded
-    store.setState({ currentView: 'editor', currentDayId: dayId });
+  private async createNewDay(weekNumber: number): Promise<void> {
+    const dayName = prompt('Enter day name (e.g., Monday, Tuesday):');
+    if (!dayName) return;
+
+    const sanitizedName = dayName.toLowerCase().replace(/\s+/g, '-');
+    const fileName = `week${weekNumber}-${sanitizedName}.yaml`;
+    const filePath = `${SCENARIOS_PATH}/${fileName}`;
+
+    // Create minimal YAML content
+    const yamlContent = `# ${dayName} - Week ${weekNumber}
+# Created by Story Forge
+
+metadata:
+  day: ${dayName}
+  week: ${weekNumber}
+  difficulty: normal
+
+emails: []
+
+meetings: []
+
+tasks: []
+
+events: []
+`;
+
+    try {
+      // Write the file to the server
+      await fileService.writeFile(filePath, yamlContent);
+      console.log(`Created new day file: ${filePath}`);
+
+      // Reload the timeline to show the new file
+      await this.loadWeeksFromFiles();
+      this.render();
+
+      // Navigate to editor with the new file
+      store.setState({
+        currentView: 'editor',
+        currentDayId: `week${weekNumber}-${sanitizedName}`,
+        currentProject: {
+          name: `${dayName} (Week ${weekNumber})`,
+          filePath: filePath,
+        } as any,
+      });
+    } catch (error) {
+      console.error('Failed to create day file:', error);
+      alert(`Failed to create file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Edit a day - load its YAML and switch to editor
+   */
+  private async editDay(dayId: string): Promise<void> {
+    // Find the day
+    let day: DayReference | undefined;
+    for (const week of this.weeks) {
+      day = week.days.find(d => d.id === dayId);
+      if (day) break;
+    }
+
+    if (!day) {
+      console.error('Day not found:', dayId);
+      return;
+    }
+
+    console.log('Opening day:', day.name, 'from', day.filePath);
+
+    // Store the day info and switch to editor
+    store.setState({
+      currentView: 'editor',
+      currentDayId: dayId,
+      // Store file path for the editor to load
+      currentProject: {
+        name: day.name,
+        filePath: day.filePath,
+      } as any,
+    });
   }
 
   /**

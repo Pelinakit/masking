@@ -163,6 +163,17 @@ body {
   to { transform: rotate(360deg); }
 }
 
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 /* ============================================================================
    Components
    ========================================================================= */
@@ -297,8 +308,39 @@ body {
   content: '';
   width: 1px;
   height: 24px;
+}
+
+/* Events toolbar section - subtle highlight for game events */
+.toolbar-events {
+  background: rgba(74, 158, 255, 0.1);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  margin: calc(-1 * var(--spacing-xs)) 0;
   background: var(--color-border);
   margin-left: var(--spacing-md);
+}
+
+.toolbar-file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolbar-file-info .file-label {
+  color: var(--color-text-dim);
+  font-size: var(--font-size-sm);
+  margin-right: var(--spacing-xs);
+}
+
+.toolbar-file-info .file-name {
+  color: var(--color-text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbar-file-info .file-name.has-file {
+  color: var(--color-primary);
 }
 
 .node-editor-canvas {
@@ -1693,4 +1735,521 @@ textarea:focus {
 
 .status-text {
   line-height: 1;
+}
+
+/* ============================================================================
+   Property Panel
+   ========================================================================= */
+
+.property-panel {
+  position: absolute;
+  top: 60px;
+  right: 20px;
+  width: 320px;
+  max-height: calc(100vh - 100px);
+  background: var(--color-bg-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 100;
+}
+
+.property-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-lighter);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.property-panel-header h3 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  margin: 0;
+}
+
+.property-panel-close {
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.property-panel-close:hover {
+  color: var(--color-text);
+}
+
+.property-panel-content {
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  max-height: calc(100vh - 160px);
+}
+
+.property-panel .form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.property-panel .form-group label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+}
+
+.property-panel input[type="text"],
+.property-panel input[type="number"],
+.property-panel textarea,
+.property-panel select {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+}
+
+.property-panel textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.property-panel input:focus,
+.property-panel textarea:focus,
+.property-panel select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.property-panel input[type="time"] {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+}
+
+.property-panel input[type="time"]:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Form row - side by side fields */
+.form-row {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+/* Checkbox groups */
+.checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Choice options */
+.choice-option {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.choice-option-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+}
+
+.choice-option input {
+  margin-top: var(--spacing-xs);
+}
+
+.remove-option-btn,
+.remove-effect-btn {
+  background: none;
+  border: none;
+  color: var(--color-error);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+}
+
+.remove-option-btn:hover,
+.remove-effect-btn:hover {
+  background: var(--color-bg-lighter);
+  border-radius: var(--radius-sm);
+}
+
+/* Effect rows */
+.effect-row {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+  align-items: center;
+}
+
+.effect-row select {
+  width: auto;
+  min-width: 70px;
+}
+
+.effect-row input {
+  flex: 1;
+  min-width: 50px;
+}
+
+.effect-row .effect-target,
+.effect-row .effect-target-select {
+  flex: 2;
+  min-width: 80px;
+}
+
+.effect-row .effect-value {
+  flex: 1;
+}
+
+.effect-target-wrapper {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex: 2;
+}
+
+.effect-target-wrapper .entity-dropdown {
+  flex: 1;
+}
+
+.effect-target-wrapper .entity-add-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  padding: 0;
+}
+
+/* Save status indicator */
+.toolbar-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.save-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #6b7280;
+  cursor: help;
+}
+
+/* ============================================================================
+   Backup History Modal
+   ========================================================================= */
+
+.backup-history-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.backup-history-content {
+  background: var(--color-bg-light);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-lg);
+}
+
+.backup-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.backup-history-header h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.backup-history-close {
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0 8px;
+}
+
+.backup-history-close:hover {
+  color: var(--color-text);
+}
+
+.backup-history-list {
+  overflow-y: auto;
+  padding: var(--spacing-sm);
+}
+
+.backup-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  transition: border-color 0.2s ease;
+}
+
+.backup-history-item:hover {
+  border-color: var(--color-primary);
+}
+
+.backup-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.backup-label {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.backup-details {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+}
+
+.backup-restore-btn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.backup-restore-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+/* ============================================================================
+   Trigger Mode Selector
+   ========================================================================= */
+
+.trigger-mode-selector {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xs);
+}
+
+.trigger-mode-btn {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition: all 0.2s ease;
+}
+
+.trigger-mode-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.trigger-mode-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.form-hint {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+  margin-top: var(--spacing-xs);
+}
+
+/* ============================================================================
+   Entity Dropdown with Add Button
+   ========================================================================= */
+
+.entity-dropdown-row {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.entity-dropdown {
+  flex: 1;
+}
+
+.entity-add-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--color-success);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.entity-add-btn:hover {
+  background: #22c55e;
+}
+
+/* ============================================================================
+   Participants List
+   ========================================================================= */
+
+.participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.participant-row {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.participant-row .participant-select {
+  flex: 1;
+}
+
+.remove-participant-btn {
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-sm);
+  color: var(--color-error);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.remove-participant-btn:hover {
+  background: var(--color-error);
+  color: white;
+}
+
+/* ============================================================================
+   Entity Modal
+   ========================================================================= */
+
+.entity-modal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.entity-modal-content {
+  background: var(--color-bg-light);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  width: 90%;
+  max-width: 300px;
+  box-shadow: var(--shadow-lg);
+}
+
+.entity-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.entity-modal-header h4 {
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+
+.entity-modal-close {
+  background: none;
+  border: none;
+  color: var(--color-text-dim);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.entity-modal-body {
+  padding: var(--spacing-md);
+}
+
+.entity-modal-body .form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.entity-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border);
 }

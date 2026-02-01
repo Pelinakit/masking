@@ -63,14 +63,14 @@ export class DialogueNode extends Node {
    * Get color for emotion
    */
   private getEmotionColor(emotion: Emotion): string {
-    const colors: Record<Emotion, string> = {
+    const colors: Record<string, string> = {
       neutral: '#a0a0a0',
-      happy: '#4ade80',
+      bubbly: '#4ade80',
       sad: '#60a5fa',
+      stern: '#fbbf24',
       angry: '#f87171',
-      anxious: '#fbbf24',
-      tired: '#94a3b8',
-      excited: '#fb923c',
+      giggling: '#fb923c',
+      laughing: '#f472b6',
     };
     return colors[emotion] || colors.neutral;
   }

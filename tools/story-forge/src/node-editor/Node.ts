@@ -302,6 +302,14 @@ export abstract class Node {
   }
 
   /**
+   * Update node properties
+   */
+  updateProperties(updates: Record<string, any>): void {
+    // Base implementation - subclasses override for specific properties
+    Object.assign(this, updates);
+  }
+
+  /**
    * Abstract methods to be implemented by subclasses
    */
   abstract getHeaderText(): string;

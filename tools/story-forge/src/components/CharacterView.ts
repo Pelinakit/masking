@@ -1,16 +1,19 @@
 /**
  * CharacterView Component
  * Character database with voice configuration and preview
+ * Integrates with speech-gen for voice preview
  */
 
 import { store } from '../state/store.js';
+import { speechService, type VoiceType, type EmotionalTone } from '../services/SpeechService.js';
+import { entityRegistry } from '../services/EntityRegistry.js';
+import { fileService } from '../services/FileService.js';
 import type { Character, VoiceConfig, Emotion } from '../types/index.js';
 
 export class CharacterView {
   private container: HTMLElement;
   private characters: Character[] = [];
   private selectedCharacterId: string | null = null;
-  private audioContext: AudioContext | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -19,48 +22,91 @@ export class CharacterView {
   }
 
   /**
-   * Load characters from storage or create defaults
+   * Load characters from EntityRegistry and files
    */
-  private loadCharacters(): void {
-    // Sample characters for now
-    this.characters = [
-      {
-        id: 'player-cat',
-        name: 'Player Cat',
-        species: 'Cat',
-        voice: { type: 'pip', pitchOffset: 0, speedOffset: 0 },
-        defaultEmotion: 'neutral',
-        spritePath: '/assets/sprites/player-cat.png',
-        relationships: { defaultValue: 50, min: 0, max: 100 },
-      },
-      {
-        id: 'boss-chihuahua',
-        name: 'Boss Chihuahua',
-        species: 'Chihuahua',
-        voice: { type: 'bweh', pitchOffset: 0, speedOffset: 0 },
-        defaultEmotion: 'neutral',
-        spritePath: '/assets/sprites/boss-chihuahua.png',
-        relationships: { defaultValue: 50, min: 0, max: 100 },
-      },
-      {
-        id: 'coworker-pug',
-        name: 'Coworker Pug',
-        species: 'Pug',
-        voice: { type: 'buh', pitchOffset: 0, speedOffset: 0 },
-        defaultEmotion: 'happy',
-        spritePath: '/assets/sprites/coworker-pug.png',
-        relationships: { defaultValue: 60, min: 0, max: 100 },
-      },
-      {
-        id: 'designer-corgi',
-        name: 'Designer Corgi',
-        species: 'Corgi',
-        voice: { type: 'pip', pitchOffset: 10, speedOffset: 5 },
-        defaultEmotion: 'happy',
-        spritePath: '/assets/sprites/designer-corgi.png',
-        relationships: { defaultValue: 55, min: 0, max: 100 },
-      },
-    ];
+  private async loadCharacters(): Promise<void> {
+    // Get characters from EntityRegistry
+    const registryChars = entityRegistry.getCharacters();
+
+    // Convert to full Character objects (with defaults for missing fields)
+    this.characters = registryChars.map(char => ({
+      id: char.id,
+      name: char.name,
+      species: char.species || 'Character',
+      voice: { type: 'bweh' as const, pitchOffset: 0, speedOffset: 0 },
+      defaultEmotion: 'neutral' as Emotion,
+      spritePath: `/assets/sprites/${char.id}.png`,
+      relationships: { defaultValue: 50, min: 0, max: 100 },
+    }));
+
+    // Try to load full character data from files
+    await this.loadCharacterDetails();
+
+    this.render();
+  }
+
+  /**
+   * Load detailed character data from YAML files
+   */
+  private async loadCharacterDetails(): Promise<void> {
+    for (const char of this.characters) {
+      try {
+        const data = await fileService.readFile(`public/data/characters/${char.id}.yaml`);
+        const parsed = this.parseYAML(data.content);
+
+        if (parsed) {
+          if (parsed.species) char.species = parsed.species;
+          if (parsed.spritePath) char.spritePath = parsed.spritePath;
+          if (parsed.defaultEmotion) char.defaultEmotion = parsed.defaultEmotion as Emotion;
+          if (parsed.voice) {
+            char.voice = {
+              type: (parsed.voice.type || 'bweh') as 'bweh' | 'buh' | 'pip' | 'meh',
+              pitchOffset: parsed.voice.pitchOffset || 0,
+              speedOffset: parsed.voice.speedOffset || 0,
+            };
+          }
+        }
+      } catch {
+        // File doesn't exist yet, use defaults
+      }
+    }
+  }
+
+  /**
+   * Simple YAML parser
+   */
+  private parseYAML(content: string): any {
+    try {
+      const result: any = { voice: {} };
+      const lines = content.split('\n');
+      let inVoice = false;
+
+      for (const line of lines) {
+        if (line.trim() === 'voice:') {
+          inVoice = true;
+          continue;
+        }
+
+        if (inVoice && line.startsWith('  ')) {
+          const match = line.trim().match(/^(\w+):\s*(.*)$/);
+          if (match) {
+            const [, key, value] = match;
+            result.voice[key] = isNaN(Number(value)) ? value : Number(value);
+          }
+        } else if (line.match(/^\w/)) {
+          inVoice = false;
+          const match = line.match(/^(\w+):\s*(.*)$/);
+          if (match) {
+            const [, key, value] = match;
+            result[key] = value.replace(/^["']|["']$/g, '');
+          }
+        }
+      }
+
+      return result;
+    } catch {
+      return null;
+    }
   }
 
   /**
@@ -186,12 +232,12 @@ export class CharacterView {
             <label for="char-emotion">Default Emotion</label>
             <select id="char-emotion">
               <option value="neutral" ${character.defaultEmotion === 'neutral' ? 'selected' : ''}>Neutral</option>
-              <option value="happy" ${character.defaultEmotion === 'happy' ? 'selected' : ''}>Happy</option>
+              <option value="bubbly" ${character.defaultEmotion === 'bubbly' ? 'selected' : ''}>Bubbly/Happy</option>
               <option value="sad" ${character.defaultEmotion === 'sad' ? 'selected' : ''}>Sad</option>
+              <option value="stern" ${character.defaultEmotion === 'stern' ? 'selected' : ''}>Stern</option>
               <option value="angry" ${character.defaultEmotion === 'angry' ? 'selected' : ''}>Angry</option>
-              <option value="anxious" ${character.defaultEmotion === 'anxious' ? 'selected' : ''}>Anxious</option>
-              <option value="tired" ${character.defaultEmotion === 'tired' ? 'selected' : ''}>Tired</option>
-              <option value="excited" ${character.defaultEmotion === 'excited' ? 'selected' : ''}>Excited</option>
+              <option value="giggling" ${character.defaultEmotion === 'giggling' ? 'selected' : ''}>Giggling</option>
+              <option value="laughing" ${character.defaultEmotion === 'laughing' ? 'selected' : ''}>Laughing</option>
             </select>
           </div>
           <div class="form-group">
@@ -313,17 +359,20 @@ export class CharacterView {
   /**
    * Add a new character
    */
-  private addCharacter(): void {
+  private async addCharacter(): Promise<void> {
     const name = prompt('Enter character name:');
     if (!name) return;
 
+    // Add to EntityRegistry (which also saves to file)
+    const entityChar = await entityRegistry.addCharacter({ name, role: '' });
+
     const newCharacter: Character = {
-      id: `char-${Date.now()}`,
-      name,
+      id: entityChar.id,
+      name: entityChar.name,
       species: 'Character',
       voice: { type: 'bweh', pitchOffset: 0, speedOffset: 0 },
       defaultEmotion: 'neutral',
-      spritePath: '/assets/sprites/default.png',
+      spritePath: `/assets/sprites/${entityChar.id}.png`,
       relationships: { defaultValue: 50, min: 0, max: 100 },
     };
 
@@ -331,7 +380,37 @@ export class CharacterView {
     this.selectedCharacterId = newCharacter.id;
     this.render();
 
+    // Save full character data to file
+    await this.saveCharacterToFile(newCharacter);
+
     store.setState({ isDirty: true });
+  }
+
+  /**
+   * Save character to YAML file
+   */
+  private async saveCharacterToFile(char: Character): Promise<void> {
+    const yaml = `id: ${char.id}
+name: ${char.name}
+species: ${char.species}
+spritePath: ${char.spritePath}
+defaultEmotion: ${char.defaultEmotion}
+voice:
+  type: ${char.voice.type}
+  pitchOffset: ${char.voice.pitchOffset}
+  speedOffset: ${char.voice.speedOffset}
+relationships:
+  defaultValue: ${char.relationships.defaultValue}
+  min: ${char.relationships.min}
+  max: ${char.relationships.max}
+`;
+
+    try {
+      await fileService.writeFile(`public/data/characters/${char.id}.yaml`, yaml);
+      console.log(`[CharacterView] Saved character: ${char.id}`);
+    } catch (error) {
+      console.error('[CharacterView] Failed to save character:', error);
+    }
   }
 
   /**
@@ -366,18 +445,26 @@ export class CharacterView {
 
     Object.assign(character, updates);
 
-    // Re-render card
+    // Update card display without full re-render (avoids input focus issues)
     const card = this.container.querySelector(`[data-character-id="${character.id}"]`);
     if (card) {
-      card.outerHTML = this.renderCharacterCard(character);
-      this.attachEventListeners();
+      const nameEl = card.querySelector('h4');
+      const speciesEl = card.querySelector('.character-species');
+      const voiceBadge = card.querySelector('.character-voice-badge');
+
+      if (nameEl) nameEl.textContent = character.name;
+      if (speciesEl) speciesEl.textContent = character.species;
+      if (voiceBadge) voiceBadge.textContent = `🔊 ${character.voice.type}`;
     }
+
+    // Save to file (debounced would be better, but this is simple)
+    this.saveCharacterToFile(character);
 
     store.setState({ isDirty: true });
   }
 
   /**
-   * Play voice preview using Web Audio API
+   * Play voice preview using speech-gen service
    */
   private async playVoicePreview(): Promise<void> {
     const character = this.characters.find(c => c.id === this.selectedCharacterId);
@@ -386,84 +473,46 @@ export class CharacterView {
     const textInput = this.container.querySelector('#preview-text') as HTMLInputElement;
     const text = textInput?.value || 'Hello!';
 
-    // Initialize AudioContext if needed
-    if (!this.audioContext) {
-      this.audioContext = new AudioContext();
+    // Map character emotion to speech-gen emotion
+    const emotion = this.mapToSpeechGenEmotion(character.defaultEmotion);
+
+    console.log(`Playing preview: "${text}" with ${character.voice.type} voice, ${emotion} emotion`);
+
+    try {
+      await speechService.play(
+        text,
+        character.voice.type as VoiceType,
+        emotion
+      );
+    } catch (error) {
+      console.error('Voice preview failed:', error);
     }
-
-    // Simple syllable-based synthesis
-    const syllables = text.split(/\s+/).flatMap(word => word.split(''));
-    const voiceConfig = this.getVoiceConfig(character.voice.type);
-    const emotionMultiplier = this.getEmotionMultiplier(character.defaultEmotion);
-
-    const currentTime = this.audioContext.currentTime;
-    let timeOffset = 0;
-
-    syllables.forEach((syllable, index) => {
-      const oscillator = this.audioContext!.createOscillator();
-      const gainNode = this.audioContext!.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(this.audioContext!.destination);
-
-      // Configure voice
-      const pitch = voiceConfig.pitchBase * emotionMultiplier.pitch + character.voice.pitchOffset;
-      const duration = (voiceConfig.duration / 1000) * emotionMultiplier.tempo + (character.voice.speedOffset / 100);
-
-      oscillator.type = voiceConfig.waveform;
-      oscillator.frequency.value = pitch;
-
-      gainNode.gain.value = 0.2;
-
-      oscillator.start(currentTime + timeOffset);
-      oscillator.stop(currentTime + timeOffset + duration);
-
-      timeOffset += duration + 0.05; // Gap between syllables
-    });
-
-    console.log(`Playing preview: "${text}" with ${character.voice.type} voice`);
   }
 
   /**
-   * Get voice configuration
+   * Map character emotion to speech-gen emotion
    */
-  private getVoiceConfig(voiceType: 'bweh' | 'buh' | 'pip' | 'meh'): {
-    pitchBase: number;
-    duration: number;
-    waveform: OscillatorType;
-  } {
-    const configs = {
-      bweh: { pitchBase: 300, duration: 120, waveform: 'sine' as OscillatorType },
-      buh: { pitchBase: 200, duration: 140, waveform: 'triangle' as OscillatorType },
-      pip: { pitchBase: 600, duration: 80, waveform: 'sine' as OscillatorType },
-      meh: { pitchBase: 180, duration: 130, waveform: 'sine' as OscillatorType },
+  private mapToSpeechGenEmotion(emotion: Emotion): EmotionalTone {
+    const mapping: Record<string, EmotionalTone> = {
+      neutral: 'neutral',
+      bubbly: 'bubbly',
+      happy: 'bubbly',
+      sad: 'sad',
+      stern: 'stern',
+      angry: 'angry',
+      anxious: 'stern',
+      tired: 'sad',
+      excited: 'bubbly',
+      giggling: 'giggling',
+      laughing: 'laughing',
     };
-    return configs[voiceType];
-  }
-
-  /**
-   * Get emotion multipliers
-   */
-  private getEmotionMultiplier(emotion: Emotion): { pitch: number; tempo: number } {
-    const multipliers: Record<Emotion, { pitch: number; tempo: number }> = {
-      neutral: { pitch: 1.0, tempo: 1.0 },
-      happy: { pitch: 1.2, tempo: 1.1 },
-      sad: { pitch: 0.9, tempo: 0.8 },
-      angry: { pitch: 1.15, tempo: 1.2 },
-      anxious: { pitch: 1.1, tempo: 1.15 },
-      tired: { pitch: 0.85, tempo: 0.7 },
-      excited: { pitch: 1.3, tempo: 1.3 },
-    };
-    return multipliers[emotion] || multipliers.neutral;
+    return mapping[emotion] || 'neutral';
   }
 
   /**
    * Destroy view
    */
   destroy(): void {
-    if (this.audioContext) {
-      this.audioContext.close();
-      this.audioContext = null;
-    }
+    speechService.stop();
   }
 }

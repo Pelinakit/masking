@@ -102,6 +102,30 @@ export class ChoiceNode extends Node {
   }
 
   /**
+   * Update properties from property panel
+   */
+  updateProperties(updates: Record<string, any>): void {
+    if (updates.options) {
+      this.options = updates.options;
+
+      // Recreate outputs for each choice
+      this.outputs = this.options.map((option, index) => ({
+        id: option.outputPortId || `${this.id}-out-${index}`,
+        type: 'flow' as const,
+        label: option.text.substring(0, 20),
+      }));
+
+      // Update option port IDs
+      this.options.forEach((option, index) => {
+        option.outputPortId = this.outputs[index].id;
+      });
+
+      // Update height
+      this.style.height = Math.max(120, 60 + this.options.length * 30);
+    }
+  }
+
+  /**
    * Add a new option
    */
   addOption(text: string = 'New option'): void {

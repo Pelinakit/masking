@@ -108,6 +108,16 @@ export class EffectNode extends Node {
   }
 
   /**
+   * Update properties from property panel
+   */
+  updateProperties(updates: Record<string, any>): void {
+    if (updates.effects) {
+      this.effects = updates.effects;
+      this.style.height = Math.max(100, 60 + this.effects.length * 20);
+    }
+  }
+
+  /**
    * Add a new effect
    */
   addEffect(effect: Effect): void {

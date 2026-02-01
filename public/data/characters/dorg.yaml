@@ -1,0 +1,9 @@
+id: dorg
+name: Dorg
+
+role: Humane resources
+voice:
+  type: bweh
+  pitchOffset: 0
+  speedOffset: 0
+defaultEmotion: neutral

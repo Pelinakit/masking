@@ -20,7 +20,8 @@
       "WebFetch(domain:people.ict.usc.edu)",
       "WebFetch(domain:en.wikipedia.org)",
       "WebFetch(domain:pmc.ncbi.nlm.nih.gov)",
-      "WebFetch(domain:acoustics.org)"
+      "WebFetch(domain:acoustics.org)",
+      "Bash(file:*)"
     ]
   }
 }
