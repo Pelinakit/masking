@@ -1,0 +1,73 @@
+# Laptop Desktop Interface
+# Defines the app grid, icons, and backgrounds for the laptop scene
+
+id: laptop
+name: Laptop Desktop
+background: assets/backgrounds/pc.png
+
+# Grid layout configuration
+grid:
+  max_columns: 6
+  icon_size: 80
+  padding: 32
+  spacing: 60
+
+# Transition settings
+transitions:
+  duration: 400
+  respect_reduced_motion: true
+
+# Sound effects
+sounds:
+  navigate: ui-tick
+  open_app: ui-click
+  close_app: ui-click
+
+# App definitions
+# - id: unique identifier
+# - name: display label
+# - fallback_icon: emoji shown when sprite missing
+# - sprite: path to icon image (optional)
+# - background: path to app background (optional, defaults to pc.png)
+apps:
+  - id: email
+    name: Email
+    fallback_icon: "✉"
+    sprite: assets/sprites/UI/email-button.png
+    background: assets/backgrounds/pc-email.png
+
+  - id: calendar
+    name: Calendar
+    fallback_icon: "📅"
+    # no sprite - uses fallback_icon
+    # no background - uses pc.png
+
+  - id: tasks
+    name: Tasks
+    fallback_icon: "✓"
+    # no sprite - uses fallback_icon
+    # no background - uses pc.png
+
+  - id: zoom
+    name: Zoomies
+    fallback_icon: "📹"
+    sprite: assets/sprites/UI/zoomies-button.png
+    background: assets/backgrounds/pc-zoom.png
+
+  - id: catdora
+    name: Catdora
+    fallback_icon: "🍕"
+    sprite: assets/sprites/UI/catdora-button.png
+    background: assets/backgrounds/pc-catdora.png
+
+  - id: chat
+    name: Chat
+    fallback_icon: "💬"
+    # no sprite - uses fallback_icon
+    # no background - uses pc.png
+
+  - id: solitaire
+    name: Solitaire
+    fallback_icon: "🃏"
+    sprite: assets/sprites/UI/game-button.png
+    background: assets/backgrounds/pc-game.png

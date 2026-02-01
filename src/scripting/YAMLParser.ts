@@ -163,6 +163,43 @@ export interface MeetingEvent {
   effects?: Effect[];
 }
 
+// Laptop Config Types
+export interface LaptopGridConfig {
+  max_columns: number;
+  icon_size: number;
+  padding: number;
+  spacing: number;
+}
+
+export interface LaptopTransitionsConfig {
+  duration: number;
+  respect_reduced_motion: boolean;
+}
+
+export interface LaptopSoundsConfig {
+  navigate?: string;
+  open_app?: string;
+  close_app?: string;
+}
+
+export interface LaptopAppConfig {
+  id: string;
+  name: string;
+  fallback_icon: string;
+  sprite?: string;
+  background?: string;
+}
+
+export interface LaptopConfig {
+  id: string;
+  name: string;
+  background: string;
+  grid: LaptopGridConfig;
+  transitions?: LaptopTransitionsConfig;
+  sounds?: LaptopSoundsConfig;
+  apps: LaptopAppConfig[];
+}
+
 export class YAMLParser {
   private cache: Map<string, { content: string; parsed: any; timestamp: number }> = new Map();
 
@@ -265,6 +302,26 @@ export class YAMLParser {
   async loadCharacter(path: string, bypassCache: boolean = false): Promise<CharacterConfig> {
     const content = await this.loadFile(path, bypassCache);
     return this.parseCharacter(content);
+  }
+
+  /**
+   * Parse a laptop config
+   */
+  parseLaptop(yamlContent: string): LaptopConfig {
+    try {
+      const data = load(yamlContent) as any;
+      return this.validateLaptop(data);
+    } catch (error) {
+      throw new Error(`Failed to parse laptop YAML: ${error}`);
+    }
+  }
+
+  /**
+   * Load and parse a laptop config from path
+   */
+  async loadLaptop(path: string, bypassCache: boolean = false): Promise<LaptopConfig> {
+    const content = await this.loadFile(path, bypassCache);
+    return this.parseLaptop(content);
   }
 
   /**
@@ -390,6 +447,64 @@ export class YAMLParser {
       meetingType: data.meetingType || 'general',
       recommendedMask: data.recommendedMask || 'meetingParticipant',
       events: data.events || [],
+    };
+  }
+
+  /**
+   * Validate laptop config data
+   */
+  private validateLaptop(data: any): LaptopConfig {
+    if (!data.id) {
+      throw new Error('Laptop config requires id');
+    }
+
+    if (!data.apps || !Array.isArray(data.apps) || data.apps.length === 0) {
+      throw new Error('Laptop config requires at least one app');
+    }
+
+    // Validate each app has required fields
+    const validatedApps: LaptopAppConfig[] = data.apps.map((app: any, index: number) => {
+      if (!app.id || !app.name || !app.fallback_icon) {
+        throw new Error(`App at index ${index} requires id, name, and fallback_icon`);
+      }
+      return {
+        id: app.id,
+        name: app.name,
+        fallback_icon: app.fallback_icon,
+        sprite: app.sprite,
+        background: app.background,
+      };
+    });
+
+    // Grid config with defaults
+    const grid: LaptopGridConfig = {
+      max_columns: data.grid?.max_columns ?? 6,
+      icon_size: data.grid?.icon_size ?? 80,
+      padding: data.grid?.padding ?? 32,
+      spacing: data.grid?.spacing ?? 60,
+    };
+
+    // Transitions config with defaults
+    const transitions: LaptopTransitionsConfig = {
+      duration: data.transitions?.duration ?? 400,
+      respect_reduced_motion: data.transitions?.respect_reduced_motion ?? true,
+    };
+
+    // Sounds config
+    const sounds: LaptopSoundsConfig = {
+      navigate: data.sounds?.navigate,
+      open_app: data.sounds?.open_app,
+      close_app: data.sounds?.close_app,
+    };
+
+    return {
+      id: data.id,
+      name: data.name || 'Laptop',
+      background: data.background || 'assets/backgrounds/pc.png',
+      grid,
+      transitions,
+      sounds,
+      apps: validatedApps,
     };
   }
 }
