@@ -5,9 +5,11 @@
 import { store } from '../state/store.js';
 import type { ViewType } from '../types/index.js';
 import { fileService } from '../services/FileService.js';
+import { NodeEditorView } from './NodeEditorView.js';
 
 export class App {
   private container: HTMLElement;
+  private currentView: any = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -56,12 +58,13 @@ export class App {
           </ul>
         </aside>
         <main class="main-view" id="main-view">
-          ${this.renderView(state.currentView)}
+          ${this.renderViewPlaceholder(state.currentView)}
         </main>
       </div>
     `;
 
     this.attachEventListeners();
+    this.renderDynamicView(state.currentView);
   }
 
   private renderNavItem(view: ViewType, label: string): string {
@@ -76,12 +79,16 @@ export class App {
     `;
   }
 
-  private renderView(view: ViewType): string {
+  private renderViewPlaceholder(view: ViewType): string {
+    // Return empty div for dynamic views
+    if (view === 'editor') {
+      return '<div id="dynamic-view-container" style="width: 100%; height: 100%;"></div>';
+    }
+
+    // Return static HTML for other views
     switch (view) {
       case 'timeline':
         return this.renderTimelineView();
-      case 'editor':
-        return this.renderEditorView();
       case 'characters':
         return this.renderCharactersView();
       case 'arcs':
@@ -95,6 +102,22 @@ export class App {
     }
   }
 
+  private renderDynamicView(view: ViewType): void {
+    // Cleanup previous view
+    if (this.currentView && typeof this.currentView.destroy === 'function') {
+      this.currentView.destroy();
+      this.currentView = null;
+    }
+
+    const container = this.container.querySelector('#dynamic-view-container');
+    if (!container) return;
+
+    // Render new view
+    if (view === 'editor') {
+      this.currentView = new NodeEditorView(container as HTMLElement);
+    }
+  }
+
   private renderTimelineView(): string {
     return `
       <div class="panel">
@@ -104,20 +127,6 @@ export class App {
         <p class="text-dim">Timeline view will show week/day grid here.</p>
         <p class="text-sm text-dim" style="margin-top: 16px;">
           This is where you'll organize your game days into weeks and see an overview of content.
-        </p>
-      </div>
-    `;
-  }
-
-  private renderEditorView(): string {
-    return `
-      <div class="panel">
-        <div class="panel-header">
-          <h2 class="panel-title">Node Editor</h2>
-        </div>
-        <p class="text-dim">Node editor canvas will appear here.</p>
-        <p class="text-sm text-dim" style="margin-top: 16px;">
-          This is where you'll create dialogue trees using a visual node interface.
         </p>
       </div>
     `;
