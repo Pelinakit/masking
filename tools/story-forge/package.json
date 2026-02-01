@@ -1,0 +1,16 @@
+{
+  "name": "story-forge",
+  "version": "0.1.0",
+  "description": "YAML authoring toolkit for Masking game content",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run server.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
