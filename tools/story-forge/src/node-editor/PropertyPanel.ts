@@ -40,12 +40,32 @@ export class PropertyPanel {
   }
 
   /**
-   * Show panel for a node
+   * Show panel for a node at a specific position
    */
-  show(node: Node): void {
+  show(node: Node, screenPos?: { x: number; y: number }): void {
     this.currentNode = node;
     this.render();
     this.panel.style.display = 'block';
+
+    // Position the panel near the node if position provided
+    if (screenPos) {
+      const panelWidth = 420;
+      const panelHeight = this.panel.offsetHeight || 400;
+
+      // Center horizontally over the node, with some offset
+      let left = screenPos.x - panelWidth / 2;
+      let top = screenPos.y - 20; // Slight offset above click point
+
+      // Keep panel within viewport bounds
+      const margin = 20;
+      left = Math.max(margin, Math.min(left, window.innerWidth - panelWidth - margin));
+      top = Math.max(margin, Math.min(top, window.innerHeight - panelHeight - margin));
+
+      this.panel.style.position = 'fixed';
+      this.panel.style.left = `${left}px`;
+      this.panel.style.top = `${top}px`;
+      this.panel.style.right = 'auto';
+    }
   }
 
   /**
@@ -197,7 +217,6 @@ export class PropertyPanel {
           ` : `
             <input type="text" id="prop-cond-target" value="${this.escapeHtml(data.condition.target || '')}" placeholder="e.g., flag_name" />
           `}
-          <button class="entity-add-btn" data-type="${condType === 'stat' ? 'stat' : condType === 'relationship' ? 'character' : ''}" data-field="prop-cond-target" title="Add new" ${condType !== 'stat' && condType !== 'relationship' ? 'style="display:none"' : ''}>+</button>
         </div>
       </div>
       <div class="form-group">
@@ -260,13 +279,10 @@ export class PropertyPanel {
     return `
       <div class="form-group">
         <label for="${fieldId}">${label}</label>
-        <div class="entity-dropdown-row">
-          <select id="${fieldId}" class="entity-dropdown">
-            <option value="">-- Select Character --</option>
-            ${characters.map(c => `<option value="${c.id}" ${currentValue === c.id || currentValue === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
-          </select>
-          <button class="entity-add-btn" data-type="character" data-field="${fieldId}" title="Add new character">+</button>
-        </div>
+        <select id="${fieldId}" class="entity-dropdown">
+          <option value="">-- Select Character --</option>
+          ${characters.map(c => `<option value="${c.id}" ${currentValue === c.id || currentValue === c.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+        </select>
       </div>
     `;
   }
@@ -279,13 +295,10 @@ export class PropertyPanel {
     return `
       <div class="form-group">
         <label for="${fieldId}">${label}</label>
-        <div class="entity-dropdown-row">
-          <select id="${fieldId}" class="entity-dropdown">
-            <option value="">-- Select Stat --</option>
-            ${stats.map(s => `<option value="${s.id}" ${currentValue === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
-          </select>
-          <button class="entity-add-btn" data-type="stat" data-field="${fieldId}" title="Add new stat">+</button>
-        </div>
+        <select id="${fieldId}" class="entity-dropdown">
+          <option value="">-- Select Stat --</option>
+          ${stats.map(s => `<option value="${s.id}" ${currentValue === s.id ? 'selected' : ''}>${s.name}</option>`).join('')}
+        </select>
       </div>
     `;
   }
@@ -483,7 +496,6 @@ export class PropertyPanel {
           ` : `
             <input type="text" class="effect-target" data-index="${i}" value="${this.escapeHtml(effect.target)}" placeholder="target" />
           `}
-          <button class="entity-add-btn effect-add-entity" data-type="${effect.type === 'stat' ? 'stat' : effect.type === 'relationship' ? 'character' : ''}" data-index="${i}" title="Add new" ${effect.type !== 'stat' && effect.type !== 'relationship' ? 'style="display:none"' : ''}>+</button>
         </div>
         <select class="effect-operation" data-index="${i}">
           ${operations.map(o => `<option value="${o}" ${effect.operation === o ? 'selected' : ''}>${o}</option>`).join('')}
@@ -603,14 +615,6 @@ export class PropertyPanel {
       });
     });
 
-    // Entity add buttons
-    this.panel.querySelectorAll('.entity-add-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const type = (e.target as HTMLElement).dataset.type;
-        const field = (e.target as HTMLElement).dataset.field;
-        this.showAddEntityModal(type || 'character', field || '');
-      });
-    });
 
     // Entity dropdowns (from field)
     const fromSelect = this.panel.querySelector('#prop-from') as HTMLSelectElement;
@@ -907,17 +911,6 @@ export class PropertyPanel {
       btn.addEventListener('click', (e) => {
         const index = parseInt((e.target as HTMLElement).dataset.index || '0');
         this.removeEffect(index);
-      });
-    });
-
-    // Add entity buttons in effect rows
-    this.panel.querySelectorAll('.effect-add-entity').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const type = (e.target as HTMLElement).dataset.type;
-        const index = (e.target as HTMLElement).dataset.index;
-        if (type) {
-          this.showAddEntityModal(type, `effect-target-${index}`);
-        }
       });
     });
   }

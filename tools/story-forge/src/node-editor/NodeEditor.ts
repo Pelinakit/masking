@@ -15,6 +15,7 @@ import { MeetingNode } from './nodes/MeetingNode.js';
 import { TaskNode } from './nodes/TaskNode.js';
 import { MessageNode } from './nodes/MessageNode.js';
 import { PropertyPanel } from './PropertyPanel.js';
+import { QuickAddMenu } from './QuickAddMenu.js';
 import type { NodeGraph, NodePort } from '../types/index.js';
 
 export type ChangeCallback = () => void;
@@ -42,6 +43,10 @@ export class NodeEditor {
   private propertyPanel: PropertyPanel;
   private editingNode: Node | null = null;
 
+  // Quick add menu for connection drops
+  private quickAddMenu: QuickAddMenu;
+  private pendingConnectionDrop: { x: number; y: number; fromPort: { nodeId: string; portId: string; port: NodePort } } | null = null;
+
   // Change tracking
   private changeCallbacks: Set<ChangeCallback> = new Set();
 
@@ -63,9 +68,20 @@ export class NodeEditor {
       this.editingNode = null;
     });
 
+    // Create quick add menu
+    this.quickAddMenu = new QuickAddMenu(container);
+    this.quickAddMenu.onSelect((nodeType) => {
+      this.handleQuickAddSelection(nodeType);
+    });
+    this.quickAddMenu.onCancel(() => {
+      this.pendingConnectionDrop = null;
+    });
+
     // Register callbacks
     this.canvas.onRender(() => this.render());
     this.canvas.onClick((pos) => this.handleClick(pos));
+    this.canvas.onHitTest((pos) => this.hitTest(pos));
+    this.canvas.onEmptyClick(() => this.clearSelection());
 
     // Setup additional event listeners
     this.setupEventListeners();
@@ -152,9 +168,9 @@ export class NodeEditor {
   /**
    * Open property panel for a node
    */
-  private openPropertyPanel(node: Node): void {
+  private openPropertyPanel(node: Node, screenPos?: { x: number; y: number }): void {
     this.editingNode = node;
-    this.propertyPanel.show(node);
+    this.propertyPanel.show(node, screenPos);
   }
 
   /**
@@ -169,7 +185,14 @@ export class NodeEditor {
 
       for (const node of this.nodes.values()) {
         if (node.containsPoint(worldPos.x, worldPos.y)) {
-          this.openPropertyPanel(node);
+          // Get node center in screen coordinates
+          const bounds = node.getBounds();
+          const nodeCenterWorld = {
+            x: (bounds.minX + bounds.maxX) / 2,
+            y: (bounds.minY + bounds.maxY) / 2,
+          };
+          const screenPos = this.canvas.worldToScreen(nodeCenterWorld);
+          this.openPropertyPanel(node, screenPos);
           return;
         }
       }
@@ -186,6 +209,7 @@ export class NodeEditor {
         const port = node.getPortAtPoint(worldPos.x, worldPos.y);
         if (port) {
           this.startConnection(node.id, port.id, port);
+          this.canvas.lockCursor('crosshair');
           return;
         }
       }
@@ -195,6 +219,7 @@ export class NodeEditor {
         if (node.containsPoint(worldPos.x, worldPos.y)) {
           this.draggingNode = node;
           node.startDrag(worldPos.x, worldPos.y);
+          this.canvas.lockCursor('move');
 
           if (!e.shiftKey) {
             this.clearSelection();
@@ -222,19 +247,26 @@ export class NodeEditor {
       this.clearSelection();
     });
 
-    // Mouse move for dragging
+    // Mouse move for dragging and hover tracking
     canvasElement.addEventListener('mousemove', (e) => {
       const worldPos = this.canvas.screenToWorld({ x: e.clientX, y: e.clientY });
 
       if (this.draggingNode) {
         this.draggingNode.updateDrag(worldPos.x, worldPos.y);
         this.canvas.render();
+        return;
       }
 
       if (this.connectingFromPort) {
         this.tempConnectionEnd = worldPos;
+        // Update valid target highlighting
+        this.updateConnectionTargets(worldPos);
         this.canvas.render();
+        return;
       }
+
+      // Track port hover when not dragging
+      this.updatePortHover(worldPos);
     });
 
     // Mouse up to stop dragging/connecting
@@ -242,6 +274,7 @@ export class NodeEditor {
       if (this.draggingNode) {
         this.draggingNode.stopDrag();
         this.draggingNode = null;
+        this.canvas.unlockCursor();
         this.saveToHistory();
         this.notifyChange();
       }
@@ -249,22 +282,59 @@ export class NodeEditor {
       if (this.connectingFromPort) {
         const worldPos = this.canvas.screenToWorld({ x: e.clientX, y: e.clientY });
 
+        // Check if we're dragging from an output (for quick-add menu)
+        const fromNode = this.nodes.get(this.connectingFromPort.nodeId);
+        const isDraggingFromOutput = fromNode?.outputs.some(p => p.id === this.connectingFromPort!.portId) ?? false;
+
         // Check if released on a port
+        let connectedToPort = false;
         for (const node of this.nodes.values()) {
           const port = node.getPortAtPoint(worldPos.x, worldPos.y);
           if (port && this.canConnect(this.connectingFromPort, { nodeId: node.id, portId: port.id, port })) {
-            this.createConnection(
-              this.connectingFromPort.nodeId,
-              this.connectingFromPort.portId,
-              node.id,
-              port.id
+            // Get normalized connection (always output -> input)
+            const normalized = this.getNormalizedConnection(
+              { nodeId: this.connectingFromPort.nodeId, portId: this.connectingFromPort.portId },
+              { nodeId: node.id, portId: port.id }
             );
+            if (normalized) {
+              this.createConnection(
+                normalized.sourceNodeId,
+                normalized.sourcePortId,
+                normalized.targetNodeId,
+                normalized.targetPortId
+              );
+              connectedToPort = true;
+            }
             break;
           }
         }
 
+        // If not connected to port and dragging from output, show quick-add menu
+        if (!connectedToPort && isDraggingFromOutput) {
+          this.pendingConnectionDrop = {
+            x: worldPos.x,
+            y: worldPos.y,
+            fromPort: { ...this.connectingFromPort },
+          };
+
+          // Get source port type for context filtering
+          const sourcePort = fromNode?.outputs.find(p => p.id === this.connectingFromPort!.portId);
+
+          this.quickAddMenu.show(e.clientX, e.clientY, {
+            portType: sourcePort?.type as 'flow' | 'data' | undefined,
+          });
+        }
+
         this.connectingFromPort = null;
         this.tempConnectionEnd = null;
+        this.canvas.unlockCursor();
+
+        // Clear all highlighted ports
+        for (const node of this.nodes.values()) {
+          node.highlightedPortIds.clear();
+          node.hoveredPortId = null;
+        }
+
         this.canvas.render();
       }
     });
@@ -362,6 +432,155 @@ export class NodeEditor {
   }
 
   /**
+   * Hit test - determine what's at a world position
+   */
+  private hitTest(worldPos: { x: number; y: number }): 'empty' | 'node' | 'port' | 'connection' {
+    // Check ports first (highest priority)
+    for (const node of this.nodes.values()) {
+      if (node.getPortAtPoint(worldPos.x, worldPos.y)) {
+        return 'port';
+      }
+    }
+
+    // Check nodes
+    for (const node of this.nodes.values()) {
+      if (node.containsPoint(worldPos.x, worldPos.y)) {
+        return 'node';
+      }
+    }
+
+    // Check connections
+    for (const connection of this.connections.values()) {
+      const sourceNode = this.nodes.get(connection.sourceNodeId);
+      const targetNode = this.nodes.get(connection.targetNodeId);
+      if (sourceNode && targetNode && connection.isNearPoint(worldPos.x, worldPos.y, sourceNode, targetNode)) {
+        return 'connection';
+      }
+    }
+
+    return 'empty';
+  }
+
+  /**
+   * Update port hover state
+   */
+  private updatePortHover(worldPos: { x: number; y: number }): void {
+    let needsRender = false;
+
+    // Clear all hover states first
+    for (const node of this.nodes.values()) {
+      if (node.hoveredPortId !== null) {
+        node.hoveredPortId = null;
+        needsRender = true;
+      }
+    }
+
+    // Find hovered port
+    for (const node of this.nodes.values()) {
+      const port = node.getPortAtPoint(worldPos.x, worldPos.y);
+      if (port) {
+        node.hoveredPortId = port.id;
+        needsRender = true;
+        break;
+      }
+    }
+
+    if (needsRender) {
+      this.canvas.render();
+    }
+  }
+
+  /**
+   * Update valid connection target highlighting during drag
+   */
+  private updateConnectionTargets(worldPos: { x: number; y: number }): void {
+    if (!this.connectingFromPort) return;
+
+    // Clear all highlighted ports
+    for (const node of this.nodes.values()) {
+      node.highlightedPortIds.clear();
+      node.hoveredPortId = null;
+    }
+
+    // Determine if we're dragging from an output or input
+    const fromNode = this.nodes.get(this.connectingFromPort.nodeId);
+    if (!fromNode) return;
+
+    const isDraggingFromOutput = fromNode.outputs.some(p => p.id === this.connectingFromPort!.portId);
+
+    // Only highlight the port we're close to (if it's a valid target)
+    for (const node of this.nodes.values()) {
+      // If dragging from output, look at inputs; if dragging from input, look at outputs
+      const targetPorts = isDraggingFromOutput ? node.inputs : node.outputs;
+
+      for (const port of targetPorts) {
+        const portPos = node.getPortPosition(port.id);
+        if (!portPos) continue;
+
+        const dx = worldPos.x - portPos.x;
+        const dy = worldPos.y - portPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance <= Node.PORT_SNAP_DISTANCE && this.canConnect(this.connectingFromPort, { nodeId: node.id, portId: port.id, port })) {
+          node.highlightedPortIds.add(port.id);
+          node.hoveredPortId = port.id;
+          return; // Only highlight one port
+        }
+      }
+    }
+  }
+
+  /**
+   * Handle quick-add menu selection
+   */
+  private handleQuickAddSelection(nodeType: string): void {
+    if (!this.pendingConnectionDrop) return;
+
+    const { x, y, fromPort } = this.pendingConnectionDrop;
+    let newNode: Node | null = null;
+
+    // Create the selected node type
+    switch (nodeType) {
+      case 'dialogue':
+        newNode = this.createDialogueNode(x, y);
+        break;
+      case 'choice':
+        newNode = this.createChoiceNode(x, y);
+        break;
+      case 'condition':
+        newNode = this.createConditionNode(x, y);
+        break;
+      case 'effect':
+        newNode = this.createEffectNode(x, y);
+        break;
+      case 'email':
+        newNode = this.createEmailNode(x, y);
+        break;
+      case 'meeting':
+        newNode = this.createMeetingNode(x, y);
+        break;
+      case 'task':
+        newNode = this.createTaskNode(x, y);
+        break;
+      case 'message':
+        newNode = this.createMessageNode(x, y);
+        break;
+    }
+
+    // Connect the new node to the dragged connection
+    if (newNode && newNode.inputs.length > 0) {
+      this.createConnection(
+        fromPort.nodeId,
+        fromPort.portId,
+        newNode.id,
+        newNode.inputs[0].id
+      );
+    }
+
+    this.pendingConnectionDrop = null;
+  }
+
+  /**
    * Start creating a connection from a port
    */
   private startConnection(nodeId: string, portId: string, port: NodePort): void {
@@ -370,6 +589,11 @@ export class NodeEditor {
 
   /**
    * Check if two ports can be connected
+   * Rules:
+   * - Can't connect to self
+   * - Must connect output to input (either direction of drag)
+   * - An output can only connect to one input (existing connection will be replaced)
+   * - An input can accept multiple outputs
    */
   private canConnect(
     from: { nodeId: string; portId: string; port: NodePort },
@@ -378,20 +602,69 @@ export class NodeEditor {
     // Can't connect to self
     if (from.nodeId === to.nodeId) return false;
 
-    // Can't connect input to input or output to output
     const fromNode = this.nodes.get(from.nodeId);
     const toNode = this.nodes.get(to.nodeId);
 
     if (!fromNode || !toNode) return false;
 
     const fromIsOutput = fromNode.outputs.some(p => p.id === from.portId);
+    const fromIsInput = fromNode.inputs.some(p => p.id === from.portId);
+    const toIsOutput = toNode.outputs.some(p => p.id === to.portId);
     const toIsInput = toNode.inputs.some(p => p.id === to.portId);
 
-    return fromIsOutput && toIsInput;
+    // Must connect output to input (in either direction)
+    if (fromIsOutput && toIsInput) {
+      return true;
+    } else if (fromIsInput && toIsOutput) {
+      return true;
+    }
+
+    // Can't connect input to input or output to output
+    return false;
+  }
+
+  /**
+   * Get the normalized connection (output -> input) regardless of drag direction
+   */
+  private getNormalizedConnection(
+    from: { nodeId: string; portId: string },
+    to: { nodeId: string; portId: string }
+  ): { sourceNodeId: string; sourcePortId: string; targetNodeId: string; targetPortId: string } | null {
+    const fromNode = this.nodes.get(from.nodeId);
+    const toNode = this.nodes.get(to.nodeId);
+
+    if (!fromNode || !toNode) return null;
+
+    const fromIsOutput = fromNode.outputs.some(p => p.id === from.portId);
+    const toIsInput = toNode.inputs.some(p => p.id === to.portId);
+
+    if (fromIsOutput && toIsInput) {
+      return {
+        sourceNodeId: from.nodeId,
+        sourcePortId: from.portId,
+        targetNodeId: to.nodeId,
+        targetPortId: to.portId,
+      };
+    }
+
+    const fromIsInput = fromNode.inputs.some(p => p.id === from.portId);
+    const toIsOutput = toNode.outputs.some(p => p.id === to.portId);
+
+    if (fromIsInput && toIsOutput) {
+      return {
+        sourceNodeId: to.nodeId,
+        sourcePortId: to.portId,
+        targetNodeId: from.nodeId,
+        targetPortId: from.portId,
+      };
+    }
+
+    return null;
   }
 
   /**
    * Create a connection between two ports
+   * An output can only connect to one input - existing connections from the same output are removed
    */
   private createConnection(
     sourceNodeId: string,
@@ -399,6 +672,15 @@ export class NodeEditor {
     targetNodeId: string,
     targetPortId: string
   ): Connection {
+    // Remove any existing connection from this output (output can only connect to one input)
+    const existingConnections: string[] = [];
+    for (const [id, conn] of this.connections) {
+      if (conn.sourceNodeId === sourceNodeId && conn.sourcePortId === sourcePortId) {
+        existingConnections.push(id);
+      }
+    }
+    existingConnections.forEach(id => this.connections.delete(id));
+
     const id = `conn-${this.nextConnectionId++}`;
 
     const connection = new Connection({
@@ -760,6 +1042,35 @@ export class NodeEditor {
     this.history = [];
     this.historyIndex = -1;
     this.saveToHistory();
+
+    // Zoom to fit all nodes after loading
+    this.zoomToFit();
+  }
+
+  /**
+   * Zoom to fit all nodes in view
+   */
+  zoomToFit(): void {
+    if (this.nodes.size === 0) {
+      this.canvas.centerView();
+      return;
+    }
+
+    // Calculate combined bounds of all nodes
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    this.nodes.forEach(node => {
+      const bounds = node.getBounds();
+      minX = Math.min(minX, bounds.minX);
+      minY = Math.min(minY, bounds.minY);
+      maxX = Math.max(maxX, bounds.maxX);
+      maxY = Math.max(maxY, bounds.maxY);
+    });
+
+    this.canvas.zoomToFit({ minX, minY, maxX, maxY });
   }
 
   /**

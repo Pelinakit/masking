@@ -14,20 +14,29 @@ export interface Point {
   y: number;
 }
 
+export type HitTestResult = 'empty' | 'node' | 'port' | 'connection';
+
 export class Canvas {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private transform: CanvasTransform = { x: 0, y: 0, scale: 1 };
 
-  private isDragging = false;
+  private isPanning = false;
+  private panStartPos: Point | null = null;
+  private panStartTime = 0;
   private lastMousePos: Point = { x: 0, y: 0 };
 
   private readonly MIN_SCALE = 0.1;
   private readonly MAX_SCALE = 3;
   private readonly ZOOM_SENSITIVITY = 0.001;
+  private readonly PAN_THRESHOLD = 3; // pixels before pan starts
+  private readonly CLICK_DELAY = 150; // ms to distinguish click from pan
 
   private renderCallback?: () => void;
   private clickCallback?: (worldPos: Point) => void;
+  private hitTestCallback?: (worldPos: Point) => HitTestResult;
+  private emptyClickCallback?: () => void;
+  private cursorLocked = false; // When true, Canvas won't update cursor
 
   constructor(container: HTMLElement) {
     // Create canvas
@@ -77,15 +86,25 @@ export class Canvas {
    * Handle mouse down
    */
   private handleMouseDown(e: MouseEvent): void {
-    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
-      // Middle button or Shift+Left: Pan
-      this.isDragging = true;
+    if (e.button === 1) {
+      // Middle button: Always pan
+      this.isPanning = true;
       this.lastMousePos = { x: e.clientX, y: e.clientY };
       this.canvas.style.cursor = 'grabbing';
     } else if (e.button === 0) {
-      // Left click
       const worldPos = this.screenToWorld({ x: e.clientX, y: e.clientY });
-      this.clickCallback?.(worldPos);
+      const hitTarget = this.hitTestCallback?.(worldPos) ?? 'empty';
+
+      if (hitTarget === 'empty') {
+        // Empty space - prepare to pan (will start after threshold)
+        this.panStartPos = { x: e.clientX, y: e.clientY };
+        this.panStartTime = Date.now();
+        this.lastMousePos = { x: e.clientX, y: e.clientY };
+        this.isPanning = false;
+      } else {
+        // Hit something - let NodeEditor handle it
+        this.clickCallback?.(worldPos);
+      }
     }
   }
 
@@ -93,7 +112,20 @@ export class Canvas {
    * Handle mouse move
    */
   private handleMouseMove(e: MouseEvent): void {
-    if (this.isDragging) {
+    // Check if we should start panning (after threshold)
+    if (this.panStartPos && !this.isPanning) {
+      const dx = e.clientX - this.panStartPos.x;
+      const dy = e.clientY - this.panStartPos.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance > this.PAN_THRESHOLD) {
+        this.isPanning = true;
+        this.canvas.style.cursor = 'grabbing';
+      }
+    }
+
+    // Handle active panning
+    if (this.isPanning) {
       const dx = e.clientX - this.lastMousePos.x;
       const dy = e.clientY - this.lastMousePos.y;
 
@@ -102,6 +134,35 @@ export class Canvas {
 
       this.lastMousePos = { x: e.clientX, y: e.clientY };
       this.render();
+    } else if (!this.panStartPos) {
+      // Update cursor based on what's under the mouse (only when not starting a pan)
+      this.updateCursor(e);
+    }
+  }
+
+  /**
+   * Update cursor based on what's under the mouse
+   */
+  private updateCursor(e: MouseEvent): void {
+    if (this.cursorLocked) return;
+
+    const worldPos = this.screenToWorld({ x: e.clientX, y: e.clientY });
+    const hitTarget = this.hitTestCallback?.(worldPos) ?? 'empty';
+
+    switch (hitTarget) {
+      case 'port':
+        this.canvas.style.cursor = 'crosshair';
+        break;
+      case 'node':
+        this.canvas.style.cursor = 'default';
+        break;
+      case 'connection':
+        this.canvas.style.cursor = 'pointer';
+        break;
+      case 'empty':
+      default:
+        this.canvas.style.cursor = 'grab';
+        break;
     }
   }
 
@@ -109,7 +170,18 @@ export class Canvas {
    * Handle mouse up
    */
   private handleMouseUp(): void {
-    this.isDragging = false;
+    if (this.panStartPos) {
+      const elapsed = Date.now() - this.panStartTime;
+
+      // If we didn't pan and it was a quick click, treat as empty click
+      if (!this.isPanning && elapsed < this.CLICK_DELAY) {
+        this.emptyClickCallback?.();
+      }
+
+      this.panStartPos = null;
+    }
+
+    this.isPanning = false;
     this.canvas.style.cursor = 'grab';
   }
 
@@ -123,8 +195,9 @@ export class Canvas {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Get world position before zoom
-    const worldPosBefore = this.screenToWorld({ x: e.clientX, y: e.clientY });
+    // Get world position under cursor before zoom
+    const worldX = (mouseX - this.transform.x) / this.transform.scale;
+    const worldY = (mouseY - this.transform.y) / this.transform.scale;
 
     // Calculate new scale
     const zoomDelta = -e.deltaY * this.ZOOM_SENSITIVITY;
@@ -133,14 +206,12 @@ export class Canvas {
       Math.min(this.MAX_SCALE, this.transform.scale * (1 + zoomDelta))
     );
 
+    // Adjust transform so the world point stays under the cursor
+    // Formula: mousePos = worldPos * scale + transform
+    // Therefore: transform = mousePos - worldPos * newScale
+    this.transform.x = mouseX - worldX * newScale;
+    this.transform.y = mouseY - worldY * newScale;
     this.transform.scale = newScale;
-
-    // Get world position after zoom
-    const worldPosAfter = this.screenToWorld({ x: e.clientX, y: e.clientY });
-
-    // Adjust transform to keep mouse position stable
-    this.transform.x += (worldPosBefore.x - worldPosAfter.x) * this.transform.scale;
-    this.transform.y += (worldPosBefore.y - worldPosAfter.y) * this.transform.scale;
 
     this.render();
   }
@@ -303,6 +374,35 @@ export class Canvas {
    */
   onClick(callback: (worldPos: Point) => void): void {
     this.clickCallback = callback;
+  }
+
+  /**
+   * Register hit test callback - determines what's at a world position
+   */
+  onHitTest(callback: (worldPos: Point) => HitTestResult): void {
+    this.hitTestCallback = callback;
+  }
+
+  /**
+   * Register empty click callback - called when clicking on empty space
+   */
+  onEmptyClick(callback: () => void): void {
+    this.emptyClickCallback = callback;
+  }
+
+  /**
+   * Lock cursor - prevents Canvas from updating cursor (for external drag operations)
+   */
+  lockCursor(cursor: string): void {
+    this.cursorLocked = true;
+    this.canvas.style.cursor = cursor;
+  }
+
+  /**
+   * Unlock cursor - allows Canvas to update cursor again
+   */
+  unlockCursor(): void {
+    this.cursorLocked = false;
   }
 
   /**

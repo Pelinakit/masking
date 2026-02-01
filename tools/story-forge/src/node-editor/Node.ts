@@ -27,6 +27,17 @@ export abstract class Node {
   selected = false;
   dragging = false;
   dragOffset = { x: 0, y: 0 };
+  hoveredPortId: string | null = null;
+  highlightedPortIds: Set<string> = new Set(); // For valid drop targets
+
+  // Shared offscreen canvas for text measurement
+  private static measureCanvas: HTMLCanvasElement | null = null;
+  private static measureCtx: CanvasRenderingContext2D | null = null;
+
+  protected static readonly MIN_WIDTH = 160;
+  protected static readonly MAX_WIDTH = 500;
+  protected static readonly CONTENT_PADDING = 50; // Space for ports and margins
+  public static readonly PORT_SNAP_DISTANCE = 25; // Distance to snap to ports when connecting
 
   protected style: NodeStyle = {
     width: 200,
@@ -49,18 +60,74 @@ export abstract class Node {
   }
 
   /**
+   * Measure text width using an offscreen canvas
+   */
+  protected static measureText(text: string, font: string = '13px -apple-system, BlinkMacSystemFont, sans-serif'): number {
+    if (!Node.measureCanvas) {
+      Node.measureCanvas = document.createElement('canvas');
+      Node.measureCtx = Node.measureCanvas.getContext('2d');
+    }
+    if (!Node.measureCtx) return 100;
+
+    Node.measureCtx.font = font;
+    return Node.measureCtx.measureText(text).width;
+  }
+
+  /**
+   * Calculate the required width for an array of text items
+   */
+  protected calculateRequiredWidth(textItems: string[], font?: string): number {
+    if (textItems.length === 0) return Node.MIN_WIDTH;
+
+    const maxTextWidth = Math.max(...textItems.map(text => Node.measureText(text, font)));
+    const requiredWidth = maxTextWidth + Node.CONTENT_PADDING;
+
+    return Math.max(Node.MIN_WIDTH, Math.min(Node.MAX_WIDTH, requiredWidth));
+  }
+
+  /**
+   * Update node width based on content (to be overridden by subclasses)
+   */
+  protected updateWidth(): void {
+    // Base implementation does nothing - subclasses override
+  }
+
+  /**
    * Draw the node
    */
   draw(ctx: CanvasRenderingContext2D): void {
-    // Draw shadow
+    // Draw selection glow first (behind the node)
+    if (this.selected) {
+      ctx.save();
+      ctx.shadowColor = this.style.borderColor;
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Draw a filled rect to create the glow effect
+      ctx.fillStyle = this.style.borderColor;
+      ctx.globalAlpha = 0.3;
+      this.drawRoundedRect(
+        ctx,
+        this.position.x,
+        this.position.y,
+        this.style.width,
+        this.style.height,
+        this.style.borderRadius
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw drop shadow
     ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 4;
 
-    // Draw border
-    ctx.strokeStyle = this.selected ? this.style.selectedBorderColor : this.style.borderColor;
-    ctx.lineWidth = this.style.borderWidth;
+    // Draw border - thicker when selected for emphasis
+    ctx.strokeStyle = this.style.borderColor;
+    ctx.lineWidth = this.selected ? 3 : this.style.borderWidth;
     ctx.fillStyle = this.style.backgroundColor;
 
     this.drawRoundedRect(
@@ -149,35 +216,47 @@ export abstract class Node {
    */
   private drawPorts(ctx: CanvasRenderingContext2D): void {
     const portRadius = 6;
+    const hoverRingRadius = portRadius + 4;
 
-    // Draw inputs on left side
-    this.inputs.forEach((port, index) => {
-      const portPos = this.getPortPosition(port.id);
-      if (!portPos) return;
+    // Helper to draw a single port
+    const drawPort = (port: NodePort, portPos: { x: number; y: number }) => {
+      const isHovered = this.hoveredPortId === port.id;
+      const isHighlighted = this.highlightedPortIds.has(port.id);
 
+      // Draw hover/highlight ring if needed
+      if (isHovered || isHighlighted) {
+        ctx.save();
+        ctx.strokeStyle = '#4a9eff';
+        ctx.globalAlpha = 0.6;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(portPos.x, portPos.y, hoverRingRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw port fill
       ctx.fillStyle = port.type === 'flow' ? '#4a9eff' : '#fbbf24';
       ctx.beginPath();
       ctx.arc(portPos.x, portPos.y, portRadius, 0, Math.PI * 2);
       ctx.fill();
 
+      // Draw port border
       ctx.strokeStyle = '#1a1a1a';
       ctx.lineWidth = 2;
       ctx.stroke();
+    };
+
+    // Draw inputs on left side
+    this.inputs.forEach((port) => {
+      const portPos = this.getPortPosition(port.id);
+      if (portPos) drawPort(port, portPos);
     });
 
     // Draw outputs on right side
-    this.outputs.forEach((port, index) => {
+    this.outputs.forEach((port) => {
       const portPos = this.getPortPosition(port.id);
-      if (!portPos) return;
-
-      ctx.fillStyle = port.type === 'flow' ? '#4a9eff' : '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(portPos.x, portPos.y, portRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#1a1a1a';
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      if (portPos) drawPort(port, portPos);
     });
   }
 
@@ -216,8 +295,6 @@ export abstract class Node {
    * Check if point is on a port
    */
   getPortAtPoint(x: number, y: number): NodePort | null {
-    const portRadius = 6;
-
     for (const port of [...this.inputs, ...this.outputs]) {
       const portPos = this.getPortPosition(port.id);
       if (!portPos) continue;
@@ -226,7 +303,7 @@ export abstract class Node {
       const dy = y - portPos.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      if (distance <= portRadius * 2) {
+      if (distance <= Node.PORT_SNAP_DISTANCE) {
         return port;
       }
     }

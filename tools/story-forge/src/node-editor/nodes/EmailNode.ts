@@ -113,11 +113,13 @@ export class EmailNode extends Node {
     ctx.fillStyle = color;
     ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, sans-serif';
     const padding = 4;
+    const height = 14;
     const width = ctx.measureText(text).width + padding * 2;
 
-    ctx.fillRect(x, y, width, 14);
+    ctx.fillRect(x, y, width, height);
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(text, x + padding, y + 10);
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + padding, y + height / 2);
   }
 
   private truncateString(str: string, maxLen: number): string {

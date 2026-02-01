@@ -31,6 +31,16 @@ export class ConditionNode extends Node {
     // Style
     this.style.height = 100;
     this.style.borderColor = '#8b5cf6';
+    this.updateWidth();
+  }
+
+  /**
+   * Update node width based on condition text
+   */
+  protected updateWidth(): void {
+    const conditionText = this.formatCondition();
+    // Center-aligned text needs extra padding on both sides
+    this.style.width = this.calculateRequiredWidth([conditionText]) + 40;
   }
 
   getHeaderText(): string {

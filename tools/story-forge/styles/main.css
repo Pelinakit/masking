@@ -1815,7 +1815,7 @@ textarea:focus {
   position: absolute;
   top: 60px;
   right: 20px;
-  width: 320px;
+  width: 420px;
   max-height: calc(100vh - 100px);
   background: var(--color-bg-light);
   border: 1px solid var(--color-border);

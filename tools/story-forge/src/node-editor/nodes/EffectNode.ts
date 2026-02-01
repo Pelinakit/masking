@@ -23,8 +23,18 @@ export class EffectNode extends Node {
     }
 
     // Style
-    this.style.height = Math.max(100, 60 + this.effects.length * 20);
+    this.style.height = Math.max(80, 50 + this.effects.length * 20);
     this.style.borderColor = '#10b981';
+    this.updateWidth();
+  }
+
+  /**
+   * Update node width based on effect text content
+   */
+  protected updateWidth(): void {
+    const effectTexts = this.effects.map(effect => this.formatEffect(effect));
+    // Add extra padding for icon (30px)
+    this.style.width = this.calculateRequiredWidth(effectTexts) + 30;
   }
 
   getHeaderText(): string {
@@ -51,15 +61,6 @@ export class EffectNode extends Node {
       ctx.fillText(effectText, this.position.x + 30, y);
     });
 
-    // Draw add effect button
-    const addY = this.position.y + 50 + this.effects.length * 20;
-    ctx.fillStyle = '#404040';
-    ctx.fillRect(this.position.x + 10, addY, this.style.width - 20, 20);
-
-    ctx.fillStyle = '#a0a0a0';
-    ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('+ Add Effect', this.position.x + this.style.width / 2, addY + 10);
   }
 
   /**
@@ -113,7 +114,8 @@ export class EffectNode extends Node {
   updateProperties(updates: Record<string, any>): void {
     if (updates.effects) {
       this.effects = updates.effects;
-      this.style.height = Math.max(100, 60 + this.effects.length * 20);
+      this.style.height = Math.max(80, 50 + this.effects.length * 20);
+      this.updateWidth();
     }
   }
 
@@ -122,7 +124,8 @@ export class EffectNode extends Node {
    */
   addEffect(effect: Effect): void {
     this.effects.push(effect);
-    this.style.height = Math.max(100, 60 + this.effects.length * 20);
+    this.style.height = Math.max(80, 50 + this.effects.length * 20);
+    this.updateWidth();
   }
 
   /**
@@ -131,7 +134,8 @@ export class EffectNode extends Node {
   removeEffect(index: number): void {
     if (index >= 0 && index < this.effects.length) {
       this.effects.splice(index, 1);
-      this.style.height = Math.max(100, 60 + this.effects.length * 20);
+      this.style.height = Math.max(80, 50 + this.effects.length * 20);
+      this.updateWidth();
     }
   }
 

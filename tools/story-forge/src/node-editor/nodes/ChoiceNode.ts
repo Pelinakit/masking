@@ -31,9 +31,19 @@ export class ChoiceNode extends Node {
       option.outputPortId = this.outputs[index].id;
     });
 
-    // Style
-    this.style.height = Math.max(120, 60 + this.options.length * 30);
+    // Style - height based on options only (no add button)
+    this.style.height = Math.max(80, 50 + this.options.length * 30);
     this.style.borderColor = '#0ea5e9';
+    this.updateWidth();
+  }
+
+  /**
+   * Update node width based on option text content
+   */
+  protected updateWidth(): void {
+    const optionTexts = this.options.map(opt => opt.text);
+    // Add extra padding for bullet point (25px)
+    this.style.width = this.calculateRequiredWidth(optionTexts) + 25;
   }
 
   getHeaderText(): string {
@@ -69,15 +79,6 @@ export class ChoiceNode extends Node {
       }
     });
 
-    // Draw add option button
-    const addY = this.position.y + 50 + this.options.length * 30;
-    ctx.fillStyle = '#404040';
-    ctx.fillRect(this.position.x + 10, addY, this.style.width - 20, 20);
-
-    ctx.fillStyle = '#a0a0a0';
-    ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('+ Add Option', this.position.x + this.style.width / 2, addY + 10);
   }
 
   /**
@@ -120,8 +121,9 @@ export class ChoiceNode extends Node {
         option.outputPortId = this.outputs[index].id;
       });
 
-      // Update height
-      this.style.height = Math.max(120, 60 + this.options.length * 30);
+      // Update size
+      this.style.height = Math.max(80, 50 + this.options.length * 30);
+      this.updateWidth();
     }
   }
 
@@ -145,8 +147,9 @@ export class ChoiceNode extends Node {
       label: text.substring(0, 20),
     });
 
-    // Update height
-    this.style.height = Math.max(120, 60 + this.options.length * 30);
+    // Update size
+    this.style.height = Math.max(80, 50 + this.options.length * 30);
+    this.updateWidth();
   }
 
   /**
@@ -162,8 +165,9 @@ export class ChoiceNode extends Node {
       // Remove output port
       this.outputs = this.outputs.filter(p => p.id !== option.outputPortId);
 
-      // Update height
-      this.style.height = Math.max(120, 60 + this.options.length * 30);
+      // Update size
+      this.style.height = Math.max(80, 50 + this.options.length * 30);
+      this.updateWidth();
     }
   }
 
