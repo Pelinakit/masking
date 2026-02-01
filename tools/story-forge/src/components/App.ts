@@ -5,6 +5,9 @@
 import { store } from '../state/store.js';
 import type { ViewType } from '../types/index.js';
 import { fileService } from '../services/FileService.js';
+import { keyboardShortcuts } from '../services/KeyboardShortcuts.js';
+import { autoSave } from '../services/AutoSave.js';
+import { themeManager } from '../services/ThemeManager.js';
 import { NodeEditorView } from './NodeEditorView.js';
 import { TimelineView } from './TimelineView.js';
 import { CharacterView } from './CharacterView.js';
@@ -29,6 +32,16 @@ export class App {
       return;
     }
 
+    // Initialize services
+    keyboardShortcuts; // Singleton auto-initializes
+    autoSave; // Singleton auto-initializes
+    themeManager; // Singleton auto-initializes
+
+    // Listen for keyboard save event
+    window.addEventListener('keyboard-save', () => {
+      this.handleSave();
+    });
+
     // Subscribe to state changes
     store.subscribe(() => this.render());
 
@@ -38,13 +51,20 @@ export class App {
 
   private render(): void {
     const state = store.getState();
+    const themeIcon = themeManager.getThemeIcon();
 
     this.container.innerHTML = `
       <div class="app-header">
         <h1 class="app-title">🎨 Story Forge</h1>
         <div class="app-actions">
-          <button class="button button-secondary" id="save-btn" ${state.isDirty ? '' : 'disabled'}>
+          <button class="button button-secondary" id="theme-btn" title="Toggle theme">
+            ${themeIcon}
+          </button>
+          <button class="button button-secondary" id="save-btn" ${state.isDirty ? '' : 'disabled'} title="Save (Ctrl+S)">
             💾 Save
+          </button>
+          <button class="button button-secondary" id="shortcuts-btn" title="Keyboard shortcuts (Shift+?)">
+            ⌨️
           </button>
           <button class="button button-secondary" id="settings-btn">
             ⚙️
@@ -61,6 +81,12 @@ export class App {
             ${this.renderNavItem('assets', '🖼️ Assets')}
             ${this.renderNavItem('validate', '✅ Validate')}
           </ul>
+          <div class="sidebar-footer">
+            <div class="auto-save-indicator">
+              <span class="status-dot ${state.isDirty ? 'unsaved' : 'saved'}"></span>
+              <span class="status-text">${state.isDirty ? 'Unsaved changes' : 'All changes saved'}</span>
+            </div>
+          </div>
         </aside>
         <main class="main-view" id="main-view">
           ${this.renderViewPlaceholder(state.currentView)}
@@ -139,22 +165,79 @@ export class App {
       this.handleSave();
     });
 
+    // Theme toggle button
+    const themeBtn = this.container.querySelector('#theme-btn');
+    themeBtn?.addEventListener('click', () => {
+      themeManager.toggle();
+      this.render();
+    });
+
+    // Shortcuts button
+    const shortcutsBtn = this.container.querySelector('#shortcuts-btn');
+    shortcutsBtn?.addEventListener('click', () => {
+      this.showShortcuts();
+    });
+
     // Settings button
     const settingsBtn = this.container.querySelector('#settings-btn');
     settingsBtn?.addEventListener('click', () => {
-      alert('Settings panel coming soon!');
+      this.showSettings();
     });
   }
 
   private async handleSave(): Promise<void> {
     try {
-      // TODO: Implement actual save logic
+      const state = store.getState();
+      if (!state.isDirty) return;
+
       console.log('Saving project...');
+
+      // In a real implementation, this would save to the server
+      // For now, we just mark as clean (auto-save handles localStorage)
       store.markClean();
-      alert('Project saved!');
+
+      // Show brief notification
+      const saveBtn = this.container.querySelector('#save-btn');
+      if (saveBtn) {
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = '✓ Saved';
+        setTimeout(() => {
+          if (saveBtn.textContent === '✓ Saved') {
+            saveBtn.textContent = originalText;
+          }
+        }, 2000);
+      }
     } catch (error) {
       console.error('Save failed:', error);
       alert('Failed to save project');
     }
+  }
+
+  private showShortcuts(): void {
+    const shortcuts = keyboardShortcuts.getShortcuts();
+    const helpText = shortcuts
+      .map(s => {
+        const keys: string[] = [];
+        if (s.ctrl) keys.push('Ctrl');
+        if (s.shift) keys.push('Shift');
+        if (s.alt) keys.push('Alt');
+        keys.push(s.key.toUpperCase());
+        return `${keys.join('+')} - ${s.description}`;
+      })
+      .join('\n');
+
+    alert(`Keyboard Shortcuts:\n\n${helpText}`);
+  }
+
+  private showSettings(): void {
+    const age = autoSave.getAutoSaveAge();
+    const ageText = age !== null ? `Last auto-save: ${age} minute(s) ago` : 'No auto-save';
+
+    alert(`Story Forge Settings\n\n` +
+      `Theme: ${themeManager.getTheme()}\n` +
+      `Auto-save: Enabled (30s interval)\n` +
+      `${ageText}\n\n` +
+      `Use the theme button (☀️/🌙) to toggle dark/light mode.\n` +
+      `Press Shift+? to view keyboard shortcuts.`);
   }
 }

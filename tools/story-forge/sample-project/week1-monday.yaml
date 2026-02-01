@@ -1,0 +1,264 @@
+# Week 1 - Monday: First Day of Remote Work
+# The player (Cat) starts their new remote work job at a dog-dominated company
+
+metadata:
+  title: "First Day Remote"
+  day: "week1-monday"
+  description: "Cat's first day working remotely at Bark Industries"
+
+nodes:
+  - id: start
+    type: dialogue
+    data:
+      text: "Alright, first day of work. Time to log in..."
+      speaker: "Cat"
+      sprite: "assets/sprites/characters/player-cat.png"
+      emotion: "nervous"
+    outputs:
+      - targetNodeId: laptop_boot
+
+  - id: laptop_boot
+    type: dialogue
+    data:
+      text: "*laptop chimes*"
+      speaker: null
+      background: "assets/backgrounds/pc.png"
+    outputs:
+      - targetNodeId: welcome_email
+
+  - id: welcome_email
+    type: dialogue
+    data:
+      text: "Welcome to Bark Industries! Please join the team standup at 9:00 AM."
+      speaker: "Boss (email)"
+      emotion: "neutral"
+    outputs:
+      - targetNodeId: standup_choice
+
+  - id: standup_choice
+    type: choice
+    data:
+      text: "Join the video call?"
+      choices:
+        - text: "Join early to make a good impression"
+          targetNodeId: join_early
+          energyCost: 5
+          stressCost: 3
+        - text: "Join right at 9:00"
+          targetNodeId: join_ontime
+          energyCost: 3
+          stressCost: 2
+        - text: "Join a few minutes late"
+          targetNodeId: join_late
+          energyCost: 2
+          stressCost: 5
+
+  - id: join_early
+    type: dialogue
+    data:
+      text: "Oh, you're the new cat! Welcome! I'm Chihuahua, the team lead."
+      speaker: "Chihuahua"
+      sprite: "assets/sprites/npc/chihuahua.png"
+      emotion: "happy"
+    outputs:
+      - targetNodeId: early_effect
+
+  - id: early_effect
+    type: effect
+    data:
+      effects:
+        - stat: "relationship"
+          target: "chihuahua"
+          value: 5
+        - stat: "stress"
+          value: 3
+    outputs:
+      - targetNodeId: standup_intro
+
+  - id: join_ontime
+    type: dialogue
+    data:
+      text: "Perfect timing! Let's get started."
+      speaker: "Chihuahua"
+      sprite: "assets/sprites/npc/chihuahua.png"
+      emotion: "neutral"
+    outputs:
+      - targetNodeId: ontime_effect
+
+  - id: ontime_effect
+    type: effect
+    data:
+      effects:
+        - stat: "relationship"
+          target: "chihuahua"
+          value: 2
+        - stat: "stress"
+          value: 2
+    outputs:
+      - targetNodeId: standup_intro
+
+  - id: join_late
+    type: dialogue
+    data:
+      text: "*awkward silence as you join* ...Anyway, as I was saying..."
+      speaker: "Chihuahua"
+      sprite: "assets/sprites/npc/chihuahua.png"
+      emotion: "annoyed"
+    outputs:
+      - targetNodeId: late_effect
+
+  - id: late_effect
+    type: effect
+    data:
+      effects:
+        - stat: "relationship"
+          target: "chihuahua"
+          value: -3
+        - stat: "stress"
+          value: 5
+    outputs:
+      - targetNodeId: standup_intro
+
+  - id: standup_intro
+    type: dialogue
+    data:
+      text: "Everyone, this is our new developer. Why don't you introduce yourself?"
+      speaker: "Chihuahua"
+      emotion: "neutral"
+    outputs:
+      - targetNodeId: intro_choice
+
+  - id: intro_choice
+    type: choice
+    data:
+      text: "How to introduce yourself?"
+      choices:
+        - text: "Be enthusiastic and professional"
+          targetNodeId: intro_professional
+          energyCost: 8
+          stressCost: 4
+        - text: "Be brief and casual"
+          targetNodeId: intro_casual
+          energyCost: 4
+          stressCost: 2
+        - text: "Be quiet and let them move on"
+          targetNodeId: intro_quiet
+          energyCost: 2
+          stressCost: 6
+
+  - id: intro_professional
+    type: dialogue
+    data:
+      text: "Hi everyone! I'm Cat, and I'm really excited to join the team. I specialize in frontend development and I'm looking forward to collaborating with all of you!"
+      speaker: "Cat"
+      emotion: "happy"
+    outputs:
+      - targetNodeId: professional_response
+
+  - id: professional_response
+    type: dialogue
+    data:
+      text: "Great energy! Welcome aboard."
+      speaker: "Pug"
+      sprite: "assets/sprites/npc/pug.png"
+      emotion: "happy"
+    outputs:
+      - targetNodeId: professional_effect
+
+  - id: professional_effect
+    type: effect
+    data:
+      effects:
+        - stat: "relationship"
+          target: "pug"
+          value: 4
+        - stat: "energy"
+          value: -8
+        - stat: "stress"
+          value: 4
+    outputs:
+      - targetNodeId: standup_end
+
+  - id: intro_casual
+    type: dialogue
+    data:
+      text: "Hey, I'm Cat. Happy to be here."
+      speaker: "Cat"
+      emotion: "neutral"
+    outputs:
+      - targetNodeId: casual_response
+
+  - id: casual_response
+    type: dialogue
+    data:
+      text: "Cool, welcome!"
+      speaker: "Corgi"
+      sprite: "assets/sprites/npc/corgi.png"
+      emotion: "neutral"
+    outputs:
+      - targetNodeId: casual_effect
+
+  - id: casual_effect
+    type: effect
+    data:
+      effects:
+        - stat: "relationship"
+          target: "corgi"
+          value: 2
+        - stat: "energy"
+          value: -4
+        - stat: "stress"
+          value: 2
+    outputs:
+      - targetNodeId: standup_end
+
+  - id: intro_quiet
+    type: dialogue
+    data:
+      text: "..."
+      speaker: "Cat"
+      emotion: "anxious"
+    outputs:
+      - targetNodeId: quiet_response
+
+  - id: quiet_response
+    type: dialogue
+    data:
+      text: "Okay then... let's move on to updates."
+      speaker: "Chihuahua"
+      emotion: "concerned"
+    outputs:
+      - targetNodeId: quiet_effect
+
+  - id: quiet_effect
+    type: effect
+    data:
+      effects:
+        - stat: "relationship"
+          target: "chihuahua"
+          value: -2
+        - stat: "energy"
+          value: -2
+        - stat: "stress"
+          value: 6
+        - stat: "socialAnxiety"
+          value: 5
+    outputs:
+      - targetNodeId: standup_end
+
+  - id: standup_end
+    type: dialogue
+    data:
+      text: "Alright team, let's make it a great week!"
+      speaker: "Chihuahua"
+      emotion: "happy"
+    outputs:
+      - targetNodeId: end_meeting
+
+  - id: end_meeting
+    type: event
+    data:
+      type: "end_meeting"
+      nextScene: "room"
+
+startNode: start
