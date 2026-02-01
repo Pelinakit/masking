@@ -31,6 +31,32 @@ export interface HotspotSpriteConfig {
   layer?: SceneLayer;  // 'background' (behind characters) or 'foreground' (in front)
 }
 
+// Interaction animation configuration
+export interface InteractionAnimationConfig {
+  frames: number[];
+  frameRate: number;
+  repeat: number;      // -1 for loop, 0 for once
+}
+
+// Accessibility configuration for interaction sprites
+export interface InteractionAccessibilityConfig {
+  reducedMotionStaticFrame: number;
+  description?: string;
+}
+
+// Interaction sprite configuration (for idle_interact and interact states)
+export interface InteractionSpriteConfig {
+  delay?: number;      // Seconds before triggering (idle_interact only)
+  sprite: {
+    path: string;
+    x: number;
+    y: number;
+    scale?: number;
+  };
+  animation: InteractionAnimationConfig;
+  accessibility?: InteractionAccessibilityConfig;
+}
+
 // Hitbox configuration relative to sprite
 export interface HotspotHitboxConfig {
   offset_x?: number;   // Offset from sprite center
@@ -47,6 +73,9 @@ export interface SceneHotspot {
   condition?: string;
   sprite?: HotspotSpriteConfig;
   hitbox?: HotspotHitboxConfig;
+  // Interaction states (NEW)
+  idle_interact?: InteractionSpriteConfig;  // Cosmetic animation after idle in hitbox
+  interact?: InteractionSpriteConfig;       // Functional animation on interaction
   // Legacy support: direct x/y/width/height (deprecated)
   x?: number;
   y?: number;

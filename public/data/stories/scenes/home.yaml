@@ -8,6 +8,10 @@ ambientSound: ambient-home
 # Sprite-centric coordinate system:
 # - sprite.x/y = sprite position (absolute)
 # - hitbox = interaction zone relative to sprite (player must overlap to interact)
+#
+# Interaction states:
+# - idle_interact: cosmetic animation after N seconds idle in hitbox (player hidden)
+# - interact: functional animation when E is pressed (player hidden)
 
 hotspots:
   - id: bed
@@ -24,6 +28,33 @@ hotspots:
       offset_y: 100
       width: 280
       height: 300
+    # Cosmetic: cat lounging on bed after 3s idle
+    idle_interact:
+      delay: 3
+      sprite:
+        path: assets/sprites/interactions/cat-bed-lounge.png
+        x: 448
+        y: 560
+        scale: 1.0
+      animation:
+        frames: [0, 1]
+        frameRate: 2
+        repeat: -1
+      accessibility:
+        reducedMotionStaticFrame: 0
+    # Functional: cat sleeping (curled up)
+    interact:
+      sprite:
+        path: assets/sprites/interactions/cat-bed-sleep.png
+        x: 448
+        y: 560
+        scale: 1.0
+      animation:
+        frames: [0, 1, 2]
+        frameRate: 1
+        repeat: -1
+      accessibility:
+        reducedMotionStaticFrame: 1
 
   - id: laptop
     action: openLaptop
@@ -39,6 +70,33 @@ hotspots:
       offset_y: 50
       width: 150
       height: 300
+    # Cosmetic: cat sniffing/looking at laptop after 2s idle
+    idle_interact:
+      delay: 2
+      sprite:
+        path: assets/sprites/interactions/cat-laptop-curious.png
+        x: 878
+        y: 568
+        scale: 1.0
+      animation:
+        frames: [0, 1]
+        frameRate: 3
+        repeat: -1
+      accessibility:
+        reducedMotionStaticFrame: 0
+    # Functional: cat typing on laptop
+    interact:
+      sprite:
+        path: assets/sprites/interactions/cat-laptop-work.png
+        x: 878
+        y: 568
+        scale: 1.0
+      animation:
+        frames: [0, 1, 2]
+        frameRate: 4
+        repeat: -1
+      accessibility:
+        reducedMotionStaticFrame: 1
 
   - id: kitchen
     action: kitchen
@@ -54,6 +112,33 @@ hotspots:
       offset_y: -20
       width: 450
       height: 350
+    # Cosmetic: cat standing on kitchen counter after 2s idle
+    idle_interact:
+      delay: 2
+      sprite:
+        path: assets/sprites/interactions/cat-kitchen-sniff.png
+        x: 1392
+        y: 568
+        scale: 1.0
+      animation:
+        frames: [0, 1]
+        frameRate: 2
+        repeat: -1
+      accessibility:
+        reducedMotionStaticFrame: 0
+    # Functional: cat preparing/eating food
+    interact:
+      sprite:
+        path: assets/sprites/interactions/cat-kitchen-eat.png
+        x: 1392
+        y: 568
+        scale: 1.0
+      animation:
+        frames: [0, 1, 2, 3]
+        frameRate: 3
+        repeat: -1
+      accessibility:
+        reducedMotionStaticFrame: 1
 
   - id: door
     action: exitHome
@@ -70,3 +155,17 @@ hotspots:
       offset_y: 20
       width: 150
       height: 400
+    # Cosmetic: hanging off of door handle
+    idle_interact:
+      delay: 2
+      sprite:
+        path: assets/sprites/interactions/cat-kitchen-sniff.png
+        x: 1392
+        y: 568
+        scale: 1.0
+      animation:
+        frames: [0, 1]
+        frameRate: 2
+        repeat: -1
+      accessibility:
+        reducedMotionStaticFrame: 0

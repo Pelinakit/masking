@@ -10,7 +10,7 @@ import { StatBarGroup } from '@presentation/ui/StatBarGroup';
 import { ClockDisplay } from '@presentation/ui/ClockDisplay';
 import { UILayerManager } from '@presentation/ui/UILayerManager';
 import { DebugPanel } from '@presentation/ui/DebugPanel';
-import { yamlParser, type SceneScript, type SceneHotspot, type SceneLayer, type BackgroundConfig, type HotspotSpriteConfig } from '@scripting/YAMLParser';
+import { yamlParser, type SceneScript, type SceneHotspot, type SceneLayer, type BackgroundConfig, type HotspotSpriteConfig, type InteractionSpriteConfig } from '@scripting/YAMLParser';
 import { assetWarningTracker } from '@core/AssetWarningTracker';
 import { config } from '../../config';
 import { InputManager } from '@game/systems/InputManager';
@@ -55,6 +55,13 @@ export class RoomScene extends Phaser.Scene {
   private fallbackAnimState: string = 'idle';
   private fallbackFrameIndex: number = 0;
   private fallbackFrameTimer: number = 0;
+
+  // Interaction state tracking
+  private interactionState: 'idle' | 'idle-interact' | 'interact' = 'idle';
+  private currentInteractionHotspot: string | null = null;
+  private idleTimer: number = 0;  // ms spent idle in current hotspot
+  private interactionSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
+  private activeInteractionSprite: Phaser.GameObjects.Sprite | null = null;
 
   constructor() {
     super({ key: 'RoomScene' });
@@ -212,11 +219,14 @@ export class RoomScene extends Phaser.Scene {
     this.statBars.updateAll(true);
     this.clock.update();
 
+    // Check if player is moving
+    const isMoving = this.inputManager.isActionDown('move-left') || this.inputManager.isActionDown('move-right');
+
     // Handle player movement
     this.updatePlayerMovement(delta);
 
-    // Check hotspot proximity
-    this.updateHotspotProximity();
+    // Check hotspot proximity (with idle tracking for idle-interact)
+    this.updateHotspotProximity(delta, isMoving);
 
     // Handle interaction
     if (this.inputManager.isActionJustPressed('interact')) {
@@ -537,6 +547,9 @@ export class RoomScene extends Phaser.Scene {
       // Load sprite from YAML or create placeholder
       this.loadHotspotSprite(data, color, positions.spriteX, positions.spriteY);
 
+      // Load interaction sprites (idle_interact and interact)
+      this.loadInteractionSprites(data.id, data);
+
       // Hotspot area (semi-transparent for debug visibility)
       const hotspot = this.add.rectangle(
         positions.hitboxCenterX,
@@ -790,6 +803,9 @@ export class RoomScene extends Phaser.Scene {
    * Clear and recreate hotspots (for YAML reload)
    */
   private refreshHotspots(): void {
+    // Clear interaction sprites first (cancels any active state)
+    this.clearInteractionSprites();
+
     // Destroy existing hotspots
     this.hotspots.forEach(h => h.destroy());
     this.hotspots = [];
@@ -804,6 +820,332 @@ export class RoomScene extends Phaser.Scene {
 
     // Recreate from current scene data
     this.createHotspots();
+  }
+
+  // =========================================================================
+  // INTERACTION SPRITE SYSTEM
+  // =========================================================================
+
+  /**
+   * Load interaction sprites for a hotspot
+   * Loads both idle_interact and interact sprites if defined in YAML
+   */
+  private loadInteractionSprites(hotspotId: string, hotspotData: SceneHotspot): void {
+    if (hotspotData.idle_interact) {
+      this.loadSingleInteractionSprite(hotspotId, 'idle-interact', hotspotData.idle_interact);
+    }
+    if (hotspotData.interact) {
+      this.loadSingleInteractionSprite(hotspotId, 'interact', hotspotData.interact);
+    }
+  }
+
+  /**
+   * Load a single interaction sprite and create its animation
+   */
+  private loadSingleInteractionSprite(
+    hotspotId: string,
+    type: 'idle-interact' | 'interact',
+    interactionConfig: InteractionSpriteConfig
+  ): void {
+    const spriteKey = `interaction-${hotspotId}-${type}`;
+    const fullPath = config.assetPath(interactionConfig.sprite.path);
+
+    // Check if already loaded
+    if (this.textures.exists(spriteKey)) {
+      this.createInteractionSpriteFromTexture(hotspotId, type, spriteKey, interactionConfig);
+      return;
+    }
+
+    // Load as spritesheet for animation support
+    const { animation } = interactionConfig;
+    const maxFrame = Math.max(...animation.frames);
+    const frameCount = maxFrame + 1;
+
+    // Estimate frame dimensions (assume square frames, can be refined in YAML later)
+    const estimatedFrameSize = 100;  // Default, same as player-cat
+
+    // Use HTMLImageElement to load and detect dimensions
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      // Calculate frame dimensions from image
+      const frameWidth = Math.floor(img.width / frameCount);
+      const frameHeight = img.height;
+
+      // Add as spritesheet
+      this.textures.addSpriteSheet(spriteKey, img, {
+        frameWidth,
+        frameHeight,
+      });
+
+      this.createInteractionAnimation(spriteKey, interactionConfig);
+      this.createInteractionSpriteFromTexture(hotspotId, type, spriteKey, interactionConfig);
+      console.log(`[RoomScene] Loaded interaction sprite: ${spriteKey} (${frameWidth}x${frameHeight})`);
+    };
+    img.onerror = () => {
+      assetWarningTracker.warn(
+        'missing-interaction-sprite',
+        spriteKey,
+        `Interaction sprite not found: ${fullPath}`,
+        { details: { hotspotId, type } }
+      );
+      // Skip - no placeholder, interaction state will just not show a sprite
+    };
+    img.src = fullPath;
+  }
+
+  /**
+   * Create animation for an interaction sprite
+   */
+  private createInteractionAnimation(spriteKey: string, interactionConfig: InteractionSpriteConfig): void {
+    const animKey = `${spriteKey}-anim`;
+
+    if (this.anims.exists(animKey)) {
+      return;
+    }
+
+    const { animation } = interactionConfig;
+
+    this.anims.create({
+      key: animKey,
+      frames: this.anims.generateFrameNumbers(spriteKey, { frames: animation.frames }),
+      frameRate: animation.frameRate,
+      repeat: animation.repeat,
+    });
+  }
+
+  /**
+   * Create the actual sprite instance from loaded texture
+   */
+  private createInteractionSpriteFromTexture(
+    hotspotId: string,
+    type: 'idle-interact' | 'interact',
+    spriteKey: string,
+    interactionConfig: InteractionSpriteConfig
+  ): void {
+    const mapKey = `${hotspotId}-${type}`;
+
+    // Destroy existing if any
+    const existing = this.interactionSprites.get(mapKey);
+    if (existing) {
+      existing.destroy();
+    }
+
+    const sprite = this.add.sprite(
+      interactionConfig.sprite.x,
+      interactionConfig.sprite.y,
+      spriteKey
+    );
+    sprite.setScale(interactionConfig.sprite.scale ?? 1.0);
+    sprite.setDepth(RoomScene.DEPTH.CHARACTER);
+    sprite.setVisible(false);  // Hidden by default
+    sprite.setData('animKey', `${spriteKey}-anim`);
+    sprite.setData('config', interactionConfig);
+
+    this.interactionSprites.set(mapKey, sprite);
+  }
+
+  /**
+   * Show an interaction sprite and play its animation
+   * If sprite doesn't exist (missing asset), silently skip
+   */
+  private showInteractionSprite(hotspotId: string, type: 'idle-interact' | 'interact'): void {
+    const mapKey = `${hotspotId}-${type}`;
+    const sprite = this.interactionSprites.get(mapKey);
+
+    if (!sprite) {
+      // No sprite loaded (missing asset) - skip silently
+      return;
+    }
+
+    // Hide any currently active interaction sprite
+    if (this.activeInteractionSprite && this.activeInteractionSprite !== sprite) {
+      this.activeInteractionSprite.setVisible(false);
+      this.activeInteractionSprite.stop();
+    }
+
+    // Show and animate the new sprite
+    sprite.setVisible(true);
+    this.activeInteractionSprite = sprite;
+
+    // Play animation
+    const animKey = sprite.getData('animKey') as string | undefined;
+    const interactionConfig = sprite.getData('config') as InteractionSpriteConfig | undefined;
+
+    if (animKey && this.anims.exists(animKey)) {
+      // Check for reduced motion
+      const accessibilitySettings = this.stateManager.getAccessibilitySettings();
+      if (accessibilitySettings.reducedMotion && interactionConfig?.accessibility?.reducedMotionStaticFrame !== undefined) {
+        sprite.setFrame(interactionConfig.accessibility.reducedMotionStaticFrame);
+      } else {
+        sprite.play({
+          key: animKey,
+          timeScale: accessibilitySettings.animationSpeed,
+        });
+      }
+    }
+  }
+
+  /**
+   * Hide the currently active interaction sprite
+   */
+  private hideInteractionSprite(): void {
+    if (this.activeInteractionSprite) {
+      this.activeInteractionSprite.setVisible(false);
+      this.activeInteractionSprite.stop();
+      this.tweens.killTweensOf(this.activeInteractionSprite);
+      this.activeInteractionSprite = null;
+    }
+  }
+
+  /**
+   * Clear all interaction sprites (for hot-reload)
+   */
+  private clearInteractionSprites(): void {
+    // Cancel any active interaction state first
+    this.cancelInteractionState();
+
+    // Destroy all interaction sprites
+    this.interactionSprites.forEach((sprite) => {
+      sprite.destroy();
+    });
+    this.interactionSprites.clear();
+    this.activeInteractionSprite = null;
+  }
+
+  // =========================================================================
+  // INTERACTION STATE MACHINE
+  // =========================================================================
+
+  /**
+   * Start idle-interact state (cosmetic lounging animation)
+   * Only triggers if the interaction sprite actually exists
+   */
+  private startIdleInteract(hotspotId: string): void {
+    if (this.interactionState !== 'idle') return;
+
+    const hotspotData = this.sceneData?.hotspots.find(h => h.id === hotspotId);
+    if (!hotspotData?.idle_interact) return;
+
+    // Check if interaction sprite exists (skip if missing)
+    const mapKey = `${hotspotId}-idle-interact`;
+    if (!this.interactionSprites.has(mapKey)) {
+      return;
+    }
+
+    console.log(`[RoomScene] Starting idle-interact for: ${hotspotId}`);
+
+    this.interactionState = 'idle-interact';
+    this.currentInteractionHotspot = hotspotId;
+
+    // Hide player sprite
+    if (this.player) {
+      this.player.setVisible(false);
+    }
+
+    // Keep hotspot furniture sprite visible (with glow) - interaction sprite layers on top
+
+    // Show interaction sprite
+    this.showInteractionSprite(hotspotId, 'idle-interact');
+  }
+
+  /**
+   * Start interact state (functional interaction with animation)
+   * If sprite is missing, triggers action immediately without animation
+   */
+  private startInteract(hotspotId: string): void {
+    const hotspotData = this.sceneData?.hotspots.find(h => h.id === hotspotId);
+
+    console.log(`[RoomScene] Starting interact for: ${hotspotId}`);
+
+    // Check if we have an interact animation AND the sprite exists
+    const mapKey = `${hotspotId}-interact`;
+    const hasInteractSprite = this.interactionSprites.has(mapKey);
+
+    if (hotspotData?.interact && hasInteractSprite) {
+      this.interactionState = 'interact';
+      this.currentInteractionHotspot = hotspotId;
+
+      // Hide player (should already be hidden if coming from idle-interact)
+      if (this.player) {
+        this.player.setVisible(false);
+      }
+
+      // Hide hotspot furniture sprite
+      const hotspotSprite = this.hotspotSprites.get(hotspotId);
+      if (hotspotSprite) {
+        hotspotSprite.setVisible(false);
+      }
+
+      // Show interact animation
+      this.showInteractionSprite(hotspotId, 'interact');
+
+      // Trigger the action after a brief delay (or on animation complete for non-looping)
+      const interactConfig = hotspotData.interact;
+      if (interactConfig.animation.repeat === 0) {
+        // Non-looping: wait for animation complete
+        const sprite = this.interactionSprites.get(mapKey);
+        if (sprite) {
+          sprite.once('animationcomplete', () => {
+            this.triggerHotspotAction(hotspotId);
+          });
+        }
+      } else {
+        // Looping: trigger action after a short delay
+        this.time.delayedCall(500, () => {
+          this.triggerHotspotAction(hotspotId);
+        });
+      }
+    } else {
+      // No interact animation or sprite missing - trigger action immediately
+      this.triggerHotspotAction(hotspotId);
+    }
+  }
+
+  /**
+   * Cancel any active interaction state (return to idle)
+   */
+  private cancelInteractionState(): void {
+    if (this.interactionState === 'idle') return;
+
+    console.log(`[RoomScene] Cancelling interaction state: ${this.interactionState}`);
+
+    // Hide interaction sprite
+    this.hideInteractionSprite();
+
+    // Show player sprite
+    if (this.player) {
+      this.player.setVisible(true);
+    }
+
+    // Show hotspot furniture sprite
+    if (this.currentInteractionHotspot) {
+      const hotspotSprite = this.hotspotSprites.get(this.currentInteractionHotspot);
+      if (hotspotSprite) {
+        hotspotSprite.setVisible(true);
+      }
+    }
+
+    // Reset state
+    this.interactionState = 'idle';
+    this.currentInteractionHotspot = null;
+    this.idleTimer = 0;
+  }
+
+  /**
+   * Check for idle-interact trigger based on time in hotspot
+   */
+  private checkIdleInteractTrigger(hotspotId: string, delta: number): void {
+    const hotspotData = this.sceneData?.hotspots.find(h => h.id === hotspotId);
+    if (!hotspotData?.idle_interact) return;
+
+    const delayMs = (hotspotData.idle_interact.delay ?? 3) * 1000;
+
+    this.idleTimer += delta;
+
+    if (this.idleTimer >= delayMs) {
+      this.startIdleInteract(hotspotId);
+    }
   }
 
   /**
@@ -882,14 +1224,19 @@ export class RoomScene extends Phaser.Scene {
       }
     }
 
+    // Cancel interaction state on movement
+    if (isMoving && this.interactionState !== 'idle') {
+      this.cancelInteractionState();
+    }
+
     // Update position
     this.playerX += (velocityX * delta) / 1000;
     this.playerX = Phaser.Math.Clamp(this.playerX, this.ROOM_BOUNDS.left, this.ROOM_BOUNDS.right);
 
     this.player.setX(this.playerX);
 
-    // Update animation based on movement state
-    if (this.player instanceof Character) {
+    // Update animation based on movement state (only if visible)
+    if (this.player.visible && this.player instanceof Character) {
       if (isMoving) {
         this.player.playAnimation('walk');
       } else {
@@ -973,12 +1320,18 @@ export class RoomScene extends Phaser.Scene {
   /**
    * Update hotspot proximity and show/hide prompts
    * Shows prompt and glow when player hitbox overlaps hotspot area
+   * Also tracks idle time for idle-interact triggering
    */
-  private updateHotspotProximity(): void {
+  private updateHotspotProximity(delta: number, isMoving: boolean): void {
     if (!this.player) return;
+
+    // Skip proximity updates during interaction states
+    if (this.interactionState !== 'idle') return;
 
     // Player hitbox (centered on playerX, bottom at player.y)
     const playerBounds = this.getPlayerBounds();
+
+    let currentHotspotId: string | null = null;
 
     this.hotspots.forEach(hotspot => {
       const id = hotspot.getData('id');
@@ -988,6 +1341,10 @@ export class RoomScene extends Phaser.Scene {
       // Check if player hitbox overlaps hotspot rectangle
       const hotspotBounds = hotspot.getBounds();
       const overlaps = Phaser.Geom.Rectangle.Overlaps(playerBounds, hotspotBounds);
+
+      if (overlaps) {
+        currentHotspotId = id;
+      }
 
       // Show/hide interaction prompt
       if (prompt) {
@@ -999,6 +1356,22 @@ export class RoomScene extends Phaser.Scene {
         this.updateSpriteGlow(sprite, overlaps);
       }
     });
+
+    // Update idle timer for idle-interact triggering
+    if (currentHotspotId && !isMoving) {
+      // Player is idle in a hotspot
+      if (this.currentInteractionHotspot !== currentHotspotId) {
+        // Changed to a different hotspot, reset timer
+        this.currentInteractionHotspot = currentHotspotId;
+        this.idleTimer = 0;
+      }
+      // Check for idle-interact trigger
+      this.checkIdleInteractTrigger(currentHotspotId, delta);
+    } else {
+      // Player is moving or not in a hotspot, reset idle state
+      this.currentInteractionHotspot = null;
+      this.idleTimer = 0;
+    }
   }
 
   /**
@@ -1043,18 +1416,31 @@ export class RoomScene extends Phaser.Scene {
   /**
    * Handle interaction
    * Interacts with hotspot when player hitbox overlaps it
+   * If in idle-interact state, transitions to interact state
    */
   private handleInteraction(): void {
     if (!this.player) return;
 
-    // Player hitbox
+    // If in idle-interact state, transition to interact
+    if (this.interactionState === 'idle-interact' && this.currentInteractionHotspot) {
+      this.audioManager.playSfx('ui-click');
+      this.startInteract(this.currentInteractionHotspot);
+      return;
+    }
+
+    // If already in interact state, ignore (can't re-interact while interacting)
+    if (this.interactionState === 'interact') {
+      return;
+    }
+
+    // Normal interaction flow - find hotspot to interact with
     const playerBounds = this.getPlayerBounds();
 
     // Find first overlapping hotspot (or closest if multiple overlap)
     let closestHotspot: Phaser.GameObjects.Rectangle | null = null;
     let closestDistance = Infinity;
 
-    this.hotspots.forEach(hotspot => {
+    for (const hotspot of this.hotspots) {
       const hotspotBounds = hotspot.getBounds();
 
       // Check collision
@@ -1072,19 +1458,24 @@ export class RoomScene extends Phaser.Scene {
           closestHotspot = hotspot;
         }
       }
-    });
+    }
 
     if (closestHotspot) {
-      const id = closestHotspot.getData('id');
-
-      // Play interact animation if using Character class (visual feedback only)
-      if (this.player instanceof Character) {
-        this.player.playAnimation('interact');
-      }
-
-      // Trigger action immediately
-      this.triggerHotspotAction(id);
+      const id = closestHotspot.getData('id') as string;
       this.audioManager.playSfx('ui-click');
+
+      // Check if hotspot has interact animation
+      const hotspotData = this.sceneData?.hotspots.find(h => h.id === id);
+      if (hotspotData?.interact) {
+        // Use the new interact state with animation
+        this.startInteract(id);
+      } else {
+        // No interact animation, use old behavior with player interact animation
+        if (this.player instanceof Character) {
+          this.player.playAnimation('interact');
+        }
+        this.triggerHotspotAction(id);
+      }
     }
   }
 

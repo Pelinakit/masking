@@ -8,6 +8,7 @@ export type WarningSeverity = 'error' | 'warn' | 'info';
 
 export type WarningType =
   | 'missing-sprite'
+  | 'missing-interaction-sprite'
   | 'frame-mismatch'
   | 'missing-audio'
   | 'config-error'
