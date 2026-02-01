@@ -1,12 +1,14 @@
 /**
  * MeetingScene
  * Core mechanic - Zoom meeting with mask selection
- * Shows participants, mask options, and consequences
+ * Loads meeting definitions from YAML scenarios
  */
 
 import Phaser from 'phaser';
 import { StateManager } from '@game/StateManager';
 import { Character, type CharacterConfig } from '@presentation/components/Character';
+import { ScenarioLoader } from '@scripting/ScenarioLoader';
+import type { Meeting, MeetingEvent as ScenarioMeetingEvent, MeetingChoice as ScenarioMeetingChoice } from '@scripting/types/ScenarioTypes';
 
 export interface MaskType {
   id: string;
@@ -24,38 +26,15 @@ export interface Participant {
   mood: 'happy' | 'neutral' | 'annoyed' | 'angry';
 }
 
-export interface MeetingData {
-  id: string;
-  title: string;
-  participants: Participant[];
-  requiredMask?: string;
-  duration: number;
-  events: MeetingEvent[];
-}
-
-export interface MeetingEvent {
-  time: number; // Minutes into meeting
-  type: 'question' | 'presentation' | 'discussion' | 'break';
-  speaker: string;
-  text: string;
-  choices?: MeetingChoice[];
-}
-
-export interface MeetingChoice {
-  text: string;
-  mask?: string; // Which mask is best for this choice
-  energyCost: number;
-  stressCost: number;
-  consequence: string;
-}
-
 export class MeetingScene extends Phaser.Scene {
   private stateManager!: StateManager;
-  private meetingData?: MeetingData;
+  private scenarioLoader!: ScenarioLoader;
+  private meeting?: Meeting;
 
   private currentMask: string | null = null;
   private meetingProgress: number = 0;
   private meetingDuration: number = 30; // minutes
+  private currentEventIndex: number = 0;
 
   // Mask types
   private masks: MaskType[] = [
@@ -130,12 +109,22 @@ export class MeetingScene extends Phaser.Scene {
   }
 
   init(data: any): void {
-    this.meetingData = data.meeting;
-    this.meetingDuration = data.meeting?.duration || 30;
+    // Expect data.meetingId to load from YAML
+    // Or data.meeting if passed directly
+    if (data.meeting) {
+      this.meeting = data.meeting;
+      this.meetingDuration = data.meeting.duration || 30;
+    }
   }
 
-  create(): void {
+  async create(): Promise<void> {
     this.stateManager = new StateManager();
+    this.scenarioLoader = new ScenarioLoader();
+
+    // Load meeting from YAML if only ID was provided
+    if (!this.meeting) {
+      await this.loadMeetingFromScenario();
+    }
 
     // Load character configs from registry
     this.characterConfigs = this.registry.get('characterConfigs') as CharacterConfig[] || [];
@@ -156,6 +145,27 @@ export class MeetingScene extends Phaser.Scene {
   }
 
   /**
+   * Load meeting from current scenario
+   */
+  private async loadMeetingFromScenario(): Promise<void> {
+    try {
+      const scenario = this.scenarioLoader.getCurrentScenario();
+      if (!scenario) {
+        console.warn('No current scenario loaded');
+        return;
+      }
+
+      // Get first meeting from scenario
+      if (scenario.meetings && scenario.meetings.length > 0) {
+        this.meeting = scenario.meetings[0];
+        this.meetingDuration = this.meeting.duration || 30;
+      }
+    } catch (error) {
+      console.error('Failed to load meeting from scenario:', error);
+    }
+  }
+
+  /**
    * Create video grid showing participants
    */
   private createVideoGrid(): void {
@@ -163,7 +173,7 @@ export class MeetingScene extends Phaser.Scene {
     this.participantCharacters.clear();
 
     const { width } = this.cameras.main;
-    const participants = this.meetingData?.participants || [];
+    const participants = this.meeting?.participants || [];
     const videoWidth = 200;
     const videoHeight = 150;
     const spacing = 20;
@@ -180,7 +190,6 @@ export class MeetingScene extends Phaser.Scene {
       videoBg.setOrigin(0);
 
       // Try to find character config for this participant
-      // Match by participant name containing character id (e.g., "Bark Thompson" -> "boss-chihuahua")
       const charConfig = this.findCharacterConfig(participant.name);
 
       if (charConfig) {
@@ -234,21 +243,21 @@ export class MeetingScene extends Phaser.Scene {
    */
   private findCharacterConfig(participantName: string): CharacterConfig | undefined {
     // Look for a character config that matches the participant
-    // This matches on the character's name property
     return this.characterConfigs.find((config) => config.name === participantName);
   }
 
   /**
    * Get participant icon based on mood
    */
-  private getParticipantIcon(participant: Participant): string {
-    const icons = {
+  private getParticipantIcon(participant: { name: string; role?: string; mood?: string }): string {
+    const mood = participant.mood || 'neutral';
+    const icons: Record<string, string> = {
       happy: '😊',
       neutral: '😐',
       annoyed: '😒',
       angry: '😠',
     };
-    return icons[participant.mood];
+    return icons[mood] || '😐';
   }
 
   /**
@@ -364,7 +373,7 @@ export class MeetingScene extends Phaser.Scene {
   /**
    * Show meeting event with choices
    */
-  private showEvent(event: MeetingEvent): void {
+  private showEvent(event: ScenarioMeetingEvent): void {
     this.eventContainer.removeAll(true);
     this.eventContainer.setVisible(true);
 
@@ -429,8 +438,8 @@ export class MeetingScene extends Phaser.Scene {
   /**
    * Handle meeting choice
    */
-  private handleChoice(choice: MeetingChoice): void {
-    // Apply costs
+  private handleChoice(choice: ScenarioMeetingChoice): void {
+    // Apply costs from YAML
     this.stateManager.stats.modifyStat('energy', -choice.energyCost);
     this.stateManager.stats.modifyStat('stress', choice.stressCost);
 
@@ -441,8 +450,32 @@ export class MeetingScene extends Phaser.Scene {
       console.log('Wrong mask used! Extra stress.');
     }
 
+    // Apply effects from YAML
+    if (choice.effects) {
+      choice.effects.forEach((effect) => {
+        switch (effect.type) {
+          case 'relationship':
+            if (effect.target && typeof effect.value === 'number') {
+              this.stateManager.relationships.modifyRelationship(effect.target, effect.value);
+            }
+            break;
+          case 'stat':
+            if (effect.stat && typeof effect.value === 'number') {
+              this.stateManager.stats.modifyStat(effect.stat as any, effect.value);
+            }
+            break;
+          case 'unlock':
+            // Handle content unlocking
+            console.log('Unlocked:', effect.target);
+            break;
+        }
+      });
+    }
+
     // Show consequence
-    console.log(choice.consequence);
+    if (choice.consequence) {
+      console.log(choice.consequence);
+    }
 
     // Reset all participants to idle
     this.updateParticipantAnimations(null);
@@ -454,7 +487,6 @@ export class MeetingScene extends Phaser.Scene {
 
   /**
    * Update participant animations based on who is speaking
-   * @param speakerName Name of the current speaker, or null for all idle
    */
   private updateParticipantAnimations(speakerName: string | null): void {
     this.participantCharacters.forEach((character, name) => {
@@ -512,9 +544,9 @@ export class MeetingScene extends Phaser.Scene {
    * Check if current mask aligns with meeting requirements
    */
   private checkMaskAlignment(): void {
-    if (!this.meetingData?.requiredMask) return;
+    if (!this.meeting?.requiredMask) return;
 
-    if (this.currentMask === this.meetingData.requiredMask) {
+    if (this.currentMask === this.meeting.requiredMask) {
       console.log('Good mask choice!');
     } else if (this.currentMask === 'none') {
       console.log('No mask in professional setting - risky!');
@@ -529,12 +561,12 @@ export class MeetingScene extends Phaser.Scene {
    * Start the meeting
    */
   private startMeeting(): void {
-    console.log('Meeting started:', this.meetingData?.title);
+    console.log('Meeting started:', this.meeting?.title);
 
     // First event after 5 seconds
     this.time.delayedCall(5000, () => {
-      if (this.meetingData?.events && this.meetingData.events.length > 0) {
-        this.showEvent(this.meetingData.events[0]);
+      if (this.meeting?.events && this.meeting.events.length > 0) {
+        this.showEvent(this.meeting.events[0]);
       }
     });
 
@@ -560,6 +592,15 @@ export class MeetingScene extends Phaser.Scene {
       }
     }
 
+    // Check for time-based events
+    const minutesElapsed = Math.floor(this.meetingProgress / 60);
+    if (this.meeting?.events) {
+      const nextEvent = this.meeting.events[this.currentEventIndex];
+      if (nextEvent && nextEvent.time <= minutesElapsed) {
+        this.showEvent(nextEvent);
+      }
+    }
+
     // End meeting after duration
     if (this.meetingProgress >= this.meetingDuration * 60) {
       this.endMeeting();
@@ -570,7 +611,8 @@ export class MeetingScene extends Phaser.Scene {
    * Progress to next meeting phase
    */
   private progressMeeting(): void {
-    // TODO: Implement event progression
+    this.currentEventIndex++;
+    // Next event will be shown by updateMeeting based on time
   }
 
   /**
@@ -578,6 +620,11 @@ export class MeetingScene extends Phaser.Scene {
    */
   private endMeeting(): void {
     console.log('Meeting ended');
+
+    // Mark meeting as attended in scenario state
+    if (this.meeting?.id) {
+      this.scenarioLoader.attendMeeting(this.meeting.id);
+    }
 
     // Time passes
     this.stateManager.time.skipMinutes(this.meetingDuration);
