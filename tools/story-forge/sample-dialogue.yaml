@@ -1,0 +1,71 @@
+metadata:
+  title: Sample Meeting Dialogue
+  tags:
+    - meeting
+    - tutorial
+
+events:
+  - time: 0
+    type: dialogue
+    speaker: Boss Chihuahua
+    text: "Good morning everyone! Let's start our weekly standup."
+    emotion: neutral
+
+  - time: 2
+    type: question
+    speaker: Boss Chihuahua
+    text: "Who wants to share their updates first?"
+    choices:
+      - text: "I'll go first (confident)"
+        mask: presenter
+        energyCost: 15
+        stressCost: 8
+        effects:
+          - type: relationship
+            target: boss
+            operation: "+"
+            value: 5
+      - text: "I'll wait for someone else"
+        mask: meeting-participant
+        energyCost: 5
+        stressCost: 3
+        effects:
+          - type: relationship
+            target: boss
+            operation: "-"
+            value: 2
+
+  - time: 10
+    type: dialogue
+    speaker: Coworker Pug
+    text: "I finished the API integration yesterday!"
+    emotion: happy
+
+  - time: 12
+    type: question
+    speaker: Boss Chihuahua
+    text: "Great! How about you, what did you work on?"
+    choices:
+      - text: "Give detailed technical explanation"
+        mask: presenter
+        energyCost: 20
+        stressCost: 10
+        effects:
+          - type: stat
+            target: energy
+            operation: "-"
+            value: 20
+      - text: "Keep it brief and clear"
+        mask: meeting-participant
+        energyCost: 10
+        stressCost: 5
+      - text: "Minimize your contributions"
+        mask: careful-subordinate
+        energyCost: 8
+        stressCost: 12
+
+  - time: 20
+    type: dialogue
+    speaker: Boss Chihuahua
+    text: "Alright, that's all for today. Thanks everyone!"
+    emotion: neutral
