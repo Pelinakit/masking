@@ -93,7 +93,12 @@ if (isDev) {
         console.log('✅ Rebuild complete');
         // Notify all connected clients to reload
         for (const controller of reloadClients) {
-          controller.enqueue('data: reload\n\n');
+          try {
+            controller.enqueue('data: reload\n\n');
+          } catch {
+            // Controller is closed (client disconnected), remove it
+            reloadClients.delete(controller);
+          }
         }
       }
     }, 100);
