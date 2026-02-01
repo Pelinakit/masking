@@ -8,6 +8,7 @@ import Phaser from 'phaser';
 import { yamlParser } from '@scripting/YAMLParser';
 import { Character, type CharacterConfig } from '@presentation/components/Character';
 import { config } from '../../config';
+import { assetWarningTracker } from '@core/AssetWarningTracker';
 
 // List of character configs to load
 const CHARACTER_CONFIGS = [
@@ -36,6 +37,11 @@ export class BootScene extends Phaser.Scene {
 
   create(): void {
     console.log('BootScene: Initializing game...');
+
+    // Listen for global YAML reload to clear asset warnings
+    this.game.events.on('reloadYAML', () => {
+      assetWarningTracker.clear();
+    });
 
     // Start async loading process
     this.loadAllAssets().then(() => {
@@ -90,7 +96,12 @@ export class BootScene extends Phaser.Scene {
         console.log(`[BootScene] Loaded character config: ${charConfig.id}`);
         return charConfig;
       } catch (error) {
-        console.warn(`[BootScene] Failed to load character config ${path}:`, error);
+        assetWarningTracker.warn(
+          'config-error',
+          path,
+          `Failed to load character config: ${error}`,
+          { expectedPath: path, severity: 'error' }
+        );
         return null;
       }
     });
@@ -100,6 +111,7 @@ export class BootScene extends Phaser.Scene {
 
     // Store in registry for other scenes to access
     this.registry.set('characterConfigs', this.loadedCharacters);
+    this.registry.set('assetWarningTracker', assetWarningTracker);
   }
 
   /**
@@ -133,7 +145,12 @@ export class BootScene extends Phaser.Scene {
         console.log(`[BootScene] Loaded spritesheet: ${id}`);
       } catch (error) {
         // Mark for placeholder creation
-        console.warn(`[BootScene] Spritesheet not found for '${id}', will create placeholder`);
+        assetWarningTracker.warn(
+          'missing-sprite',
+          id,
+          'Spritesheet not found, creating placeholder',
+          { expectedPath: fullPath }
+        );
         placeholdersToCreate.push(charConfig);
       }
     }
@@ -242,6 +259,7 @@ export class BootScene extends Phaser.Scene {
 
   /**
    * Generate canvas for placeholder spritesheet
+   * Includes CVD-friendly diagonal stripes and warning triangle
    */
   private generatePlaceholderCanvas(charConfig: CharacterConfig, totalFrames: number): HTMLCanvasElement {
     const { id, spritesheet } = charConfig;
@@ -267,10 +285,47 @@ export class BootScene extends Phaser.Scene {
       ctx.fillStyle = `hsl(${hue}, 60%, ${lightness}%)`;
       ctx.fillRect(x, 0, frameWidth, frameHeight);
 
+      // Draw diagonal stripe pattern (CVD-friendly)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, 0, frameWidth, frameHeight);
+      ctx.clip();
+      ctx.strokeStyle = `hsla(${hue}, 80%, ${Math.max(lightness - 15, 20)}%, 0.4)`;
+      ctx.lineWidth = 4;
+      const stripeSpacing = 12;
+      for (let stripe = -frameHeight; stripe < frameWidth + frameHeight; stripe += stripeSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(x + stripe, 0);
+        ctx.lineTo(x + stripe + frameHeight, frameHeight);
+        ctx.stroke();
+      }
+      ctx.restore();
+
       // Draw border
       ctx.strokeStyle = `hsl(${hue}, 80%, 25%)`;
       ctx.lineWidth = 3;
       ctx.strokeRect(x + 2, 2, frameWidth - 4, frameHeight - 4);
+
+      // Draw warning triangle in top-left corner
+      const triangleSize = 16;
+      const triangleX = x + 8;
+      const triangleY = 8;
+      ctx.fillStyle = '#FFD700'; // Gold
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(triangleX + triangleSize / 2, triangleY);
+      ctx.lineTo(triangleX, triangleY + triangleSize);
+      ctx.lineTo(triangleX + triangleSize, triangleY + triangleSize);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Exclamation mark
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('!', triangleX + triangleSize / 2, triangleY + triangleSize - 5);
 
       const centerX = x + frameWidth / 2;
 

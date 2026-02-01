@@ -5,6 +5,7 @@
  */
 
 import Phaser from 'phaser';
+import { assetWarningTracker } from '@core/AssetWarningTracker';
 
 /**
  * Animation configuration for a single animation state
@@ -234,7 +235,7 @@ export class Character extends Phaser.GameObjects.Sprite {
     // Try to set frame, but handle case where texture isn't ready
     try {
       const texture = this.texture;
-      if (texture && texture.has(frameIndex)) {
+      if (texture && texture.has(String(frameIndex))) {
         this.setFrame(frameIndex);
       }
     } catch (error) {
@@ -338,10 +339,19 @@ export class Character extends Phaser.GameObjects.Sprite {
   /**
    * Static method to create Phaser animations from character config
    * Call this in BootScene after loading the spritesheet
+   * Validates frame indices and clamps to available frames if necessary
    * @param scene The Phaser scene
    * @param config Character configuration
    */
   static createAnimations(scene: Phaser.Scene, config: CharacterConfig): void {
+    // Get actual frame count from texture
+    const texture = scene.textures.get(config.id);
+    const actualFrameCount = texture ? texture.frameTotal : 0;
+
+    // Track if we've warned about this character's frame issues
+    let hasFrameIssues = false;
+    const outOfBoundsAnims: string[] = [];
+
     for (const [animName, animConfig] of Object.entries(config.animations)) {
       const key = `${config.id}-${animName}`;
 
@@ -350,14 +360,46 @@ export class Character extends Phaser.GameObjects.Sprite {
         continue;
       }
 
-      scene.anims.create({
-        key,
-        frames: scene.anims.generateFrameNumbers(config.id, {
-          frames: animConfig.frames,
-        }),
-        frameRate: animConfig.frameRate,
-        repeat: animConfig.repeat,
-      });
+      // Check for out-of-bounds frames and clamp
+      let frames = animConfig.frames;
+      const maxFrame = Math.max(...frames);
+
+      if (actualFrameCount > 0 && maxFrame >= actualFrameCount) {
+        hasFrameIssues = true;
+        outOfBoundsAnims.push(`${animName} (max: ${maxFrame})`);
+
+        // Clamp frames to available range
+        frames = frames.map(f => Math.min(f, actualFrameCount - 1));
+      }
+
+      try {
+        scene.anims.create({
+          key,
+          frames: scene.anims.generateFrameNumbers(config.id, {
+            frames,
+          }),
+          frameRate: animConfig.frameRate,
+          repeat: animConfig.repeat,
+        });
+      } catch (error) {
+        console.error(`[Character] Failed to create animation '${key}':`, error);
+      }
+    }
+
+    // Log warning once per character if there were frame issues
+    if (hasFrameIssues && !assetWarningTracker.hasWarned('frame-mismatch', config.id)) {
+      assetWarningTracker.warn(
+        'frame-mismatch',
+        config.id,
+        `Animations reference frames beyond spritesheet bounds`,
+        {
+          details: {
+            actualFrames: actualFrameCount,
+            affectedAnimations: outOfBoundsAnims,
+            action: 'Frames clamped to available range',
+          },
+        }
+      );
     }
 
     console.log(`[Character] Created animations for '${config.id}'`);

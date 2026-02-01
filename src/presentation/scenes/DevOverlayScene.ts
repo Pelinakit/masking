@@ -6,9 +6,13 @@
 
 import Phaser from 'phaser';
 import { yamlParser } from '@scripting/YAMLParser';
+import { assetWarningTracker, type AssetWarning } from '@core/AssetWarningTracker';
 
 export class DevOverlayScene extends Phaser.Scene {
   private devControls?: Phaser.GameObjects.Container;
+  private devModeIndicator?: Phaser.GameObjects.Container;
+  private assetStatusPanel?: Phaser.GameObjects.Container;
+  private isAssetPanelOpen: boolean = false;
 
   constructor() {
     super({ key: 'DevOverlayScene' });
@@ -29,6 +33,9 @@ export class DevOverlayScene extends Phaser.Scene {
       } else {
         this.devControls?.destroy();
         this.devControls = undefined;
+        this.devModeIndicator?.destroy();
+        this.devModeIndicator = undefined;
+        this.closeAssetStatusPanel();
       }
     });
   }
@@ -47,10 +54,16 @@ export class DevOverlayScene extends Phaser.Scene {
     if (this.devControls) {
       this.devControls.destroy();
     }
+    if (this.devModeIndicator) {
+      this.devModeIndicator.destroy();
+    }
 
     const { width } = this.cameras.main;
     this.devControls = this.add.container(0, 0);
     this.devControls.setDepth(99999);
+
+    // Create DEV MODE indicator (top-left)
+    this.createDevModeIndicator();
 
     const btnWidth = 120;
     const btnHeight = 32;
@@ -67,15 +80,46 @@ export class DevOverlayScene extends Phaser.Scene {
       () => this.reloadYAML()
     );
 
-    // Debug info button
+    // Asset Status button
     this.createButton(
       startX - btnWidth - spacing,
+      spacing,
+      btnWidth,
+      btnHeight,
+      '🖼️ Asset Status',
+      () => this.toggleAssetStatusPanel()
+    );
+
+    // Cache Stats button
+    this.createButton(
+      startX - (btnWidth + spacing) * 2,
       spacing,
       btnWidth,
       btnHeight,
       '📊 Cache Stats',
       () => this.showCacheStats()
     );
+  }
+
+  /**
+   * Create DEV MODE indicator badge
+   */
+  private createDevModeIndicator(): void {
+    this.devModeIndicator = this.add.container(10, 10);
+    this.devModeIndicator.setDepth(99998);
+
+    const bg = this.add.rectangle(0, 0, 100, 24, 0x000000, 0.9);
+    bg.setOrigin(0, 0);
+    bg.setStrokeStyle(1, 0x00ff00);
+
+    const text = this.add.text(50, 12, '🔧 DEV MODE', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#00ff00',
+    });
+    text.setOrigin(0.5);
+
+    this.devModeIndicator.add([bg, text]);
   }
 
   /**
@@ -126,6 +170,195 @@ export class DevOverlayScene extends Phaser.Scene {
     const stats = yamlParser.getCacheStats();
     console.log('[Dev] YAML Cache:', stats);
     this.showNotification(`Cached: ${stats.files} files`);
+  }
+
+  /**
+   * Toggle asset status panel visibility
+   */
+  private toggleAssetStatusPanel(): void {
+    if (this.isAssetPanelOpen) {
+      this.closeAssetStatusPanel();
+    } else {
+      this.openAssetStatusPanel();
+    }
+  }
+
+  /**
+   * Open asset status panel
+   */
+  private openAssetStatusPanel(): void {
+    this.isAssetPanelOpen = true;
+
+    if (this.assetStatusPanel) {
+      this.assetStatusPanel.destroy();
+    }
+
+    const { width, height } = this.cameras.main;
+    const panelWidth = 350;
+    const panelHeight = 300;
+    const panelX = width / 2 - panelWidth / 2;
+    const panelY = height / 2 - panelHeight / 2;
+
+    this.assetStatusPanel = this.add.container(panelX, panelY);
+    this.assetStatusPanel.setDepth(100000);
+
+    // Panel background
+    const bg = this.add.rectangle(0, 0, panelWidth, panelHeight, 0x1a1a1a, 0.98);
+    bg.setOrigin(0, 0);
+    bg.setStrokeStyle(2, 0x00ff00);
+    this.assetStatusPanel.add(bg);
+
+    // Header
+    const header = this.add.text(panelWidth / 2, 15, '🖼️ Asset Status', {
+      fontFamily: 'Comic Relief, sans-serif',
+      fontSize: '16px',
+      color: '#00ff00',
+    });
+    header.setOrigin(0.5, 0);
+    this.assetStatusPanel.add(header);
+
+    // Close button
+    const closeBtn = this.add.text(panelWidth - 15, 10, '✕', {
+      fontFamily: 'sans-serif',
+      fontSize: '18px',
+      color: '#ff6b6b',
+    });
+    closeBtn.setOrigin(0.5, 0);
+    closeBtn.setInteractive({ useHandCursor: true });
+    closeBtn.on('pointerdown', () => this.closeAssetStatusPanel());
+    closeBtn.on('pointerover', () => closeBtn.setColor('#ff9999'));
+    closeBtn.on('pointerout', () => closeBtn.setColor('#ff6b6b'));
+    this.assetStatusPanel.add(closeBtn);
+
+    // Get warnings
+    const warnings = assetWarningTracker.getAll();
+    const summary = assetWarningTracker.getSummary();
+
+    // Summary line
+    const summaryText = this.add.text(15, 45, `Total Issues: ${summary.total}`, {
+      fontFamily: 'monospace',
+      fontSize: '12px',
+      color: summary.total > 0 ? '#FFD700' : '#00ff00',
+    });
+    this.assetStatusPanel.add(summaryText);
+
+    // Divider
+    const divider = this.add.rectangle(panelWidth / 2, 65, panelWidth - 20, 1, 0x444444);
+    this.assetStatusPanel.add(divider);
+
+    // Warnings list
+    if (warnings.length === 0) {
+      const noIssues = this.add.text(panelWidth / 2, 100, '✓ No asset issues detected', {
+        fontFamily: 'Comic Relief, sans-serif',
+        fontSize: '14px',
+        color: '#00ff00',
+      });
+      noIssues.setOrigin(0.5, 0);
+      this.assetStatusPanel.add(noIssues);
+    } else {
+      let yOffset = 75;
+      const maxVisible = 8;
+      const visibleWarnings = warnings.slice(0, maxVisible);
+
+      for (const warning of visibleWarnings) {
+        const icon = this.getWarningIcon(warning);
+        const color = this.getWarningColor(warning);
+
+        const line = this.add.text(15, yOffset, `${icon} ${warning.assetId}`, {
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          color,
+        });
+        this.assetStatusPanel.add(line);
+
+        const detail = this.add.text(30, yOffset + 14, warning.message.substring(0, 40), {
+          fontFamily: 'monospace',
+          fontSize: '10px',
+          color: '#888888',
+        });
+        this.assetStatusPanel.add(detail);
+
+        yOffset += 32;
+      }
+
+      if (warnings.length > maxVisible) {
+        const more = this.add.text(15, yOffset, `... and ${warnings.length - maxVisible} more`, {
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          color: '#888888',
+        });
+        this.assetStatusPanel.add(more);
+      }
+    }
+
+    // Clear button
+    const clearBtnY = panelHeight - 40;
+    const clearBg = this.add.rectangle(panelWidth / 2, clearBtnY, 100, 28, 0x333333);
+    clearBg.setInteractive({ useHandCursor: true });
+    clearBg.setStrokeStyle(1, 0x666666);
+    clearBg.on('pointerdown', () => {
+      assetWarningTracker.clear();
+      this.openAssetStatusPanel(); // Refresh panel
+      this.showNotification('Asset warnings cleared');
+    });
+    clearBg.on('pointerover', () => clearBg.setFillStyle(0x444444));
+    clearBg.on('pointerout', () => clearBg.setFillStyle(0x333333));
+    this.assetStatusPanel.add(clearBg);
+
+    const clearText = this.add.text(panelWidth / 2, clearBtnY, 'Clear All', {
+      fontFamily: 'Comic Relief, sans-serif',
+      fontSize: '12px',
+      color: '#ffffff',
+    });
+    clearText.setOrigin(0.5);
+    this.assetStatusPanel.add(clearText);
+  }
+
+  /**
+   * Close asset status panel
+   */
+  private closeAssetStatusPanel(): void {
+    this.isAssetPanelOpen = false;
+    if (this.assetStatusPanel) {
+      this.assetStatusPanel.destroy();
+      this.assetStatusPanel = undefined;
+    }
+  }
+
+  /**
+   * Get icon for warning type
+   */
+  private getWarningIcon(warning: AssetWarning): string {
+    switch (warning.type) {
+      case 'missing-sprite':
+        return '❌';
+      case 'frame-mismatch':
+        return '⚠️';
+      case 'missing-audio':
+        return '🔇';
+      case 'config-error':
+        return '⛔';
+      case 'load-failed':
+        return '💥';
+      default:
+        return '❓';
+    }
+  }
+
+  /**
+   * Get color for warning severity
+   */
+  private getWarningColor(warning: AssetWarning): string {
+    switch (warning.severity) {
+      case 'error':
+        return '#FF6B6B';
+      case 'warn':
+        return '#FFD700';
+      case 'info':
+        return '#4ECDC4';
+      default:
+        return '#FFFFFF';
+    }
   }
 
   /**

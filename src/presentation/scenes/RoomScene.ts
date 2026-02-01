@@ -10,7 +10,9 @@ import { StatBarGroup } from '@presentation/ui/StatBarGroup';
 import { ClockDisplay } from '@presentation/ui/ClockDisplay';
 import { UILayerManager } from '@presentation/ui/UILayerManager';
 import { DebugPanel } from '@presentation/ui/DebugPanel';
-import { yamlParser, type SceneScript } from '@scripting/YAMLParser';
+import { yamlParser, type SceneScript, type SceneHotspot } from '@scripting/YAMLParser';
+import { assetWarningTracker } from '@core/AssetWarningTracker';
+import { config } from '../../config';
 import { InputManager } from '@game/systems/InputManager';
 import { TutorialManager } from '@game/systems/TutorialManager';
 import { AudioManager } from '@game/systems/AudioManager';
@@ -30,6 +32,7 @@ export class RoomScene extends Phaser.Scene {
   private player?: Character | Phaser.GameObjects.Sprite;
   private playerConfig?: CharacterConfig;
   private hotspots: Phaser.GameObjects.Rectangle[] = [];
+  private hotspotSprites: Map<string, Phaser.GameObjects.Sprite | Phaser.GameObjects.Container> = new Map();
   private interactionPrompts: Map<string, Phaser.GameObjects.Text> = new Map();
 
   private playerX: number = 400;
@@ -414,25 +417,31 @@ export class RoomScene extends Phaser.Scene {
 
     hotspotData.forEach(data => {
       const color = hotspotColors[data.id] || hotspotColors.default;
+      const centerX = data.x + data.width / 2;
+      const centerY = data.y + data.height / 2;
+
+      // Load sprite from YAML or create placeholder
+      this.loadHotspotSprite(data, color);
 
       // Hotspot area (semi-transparent for debug visibility)
       const hotspot = this.add.rectangle(
-        data.x + data.width / 2,  // YAML uses top-left, Phaser uses center
-        data.y + data.height / 2,
+        centerX,  // YAML uses top-left, Phaser uses center
+        centerY,
         data.width,
         data.height,
         color,
-        0.3
+        0.15  // More transparent now that we have sprites
       );
-      hotspot.setStrokeStyle(2, color, 0.8);
+      hotspot.setStrokeStyle(2, color, 0.5);
       hotspot.setData('id', data.id);
       hotspot.setData('action', data.action);
+      hotspot.setDepth(10);  // Above background, below sprites
       this.hotspots.push(hotspot);
 
       // Interaction prompt (hidden by default)
       const label = data.label || `${data.id} (E)`;
       const prompt = this.add.text(
-        data.x + data.width / 2,
+        centerX,
         data.y - 20,
         label,
         {
@@ -445,10 +454,157 @@ export class RoomScene extends Phaser.Scene {
       );
       prompt.setOrigin(0.5);
       prompt.setVisible(false);
+      prompt.setDepth(100);
       this.interactionPrompts.set(data.id, prompt);
     });
 
     console.log(`[RoomScene] Created ${hotspotData.length} hotspots from YAML`);
+  }
+
+  /**
+   * Load hotspot sprite from YAML config or create placeholder
+   */
+  private loadHotspotSprite(data: SceneHotspot, fallbackColor: number): void {
+    const spriteConfig = data.sprite;
+
+    if (!spriteConfig?.path) {
+      // No sprite path defined, create placeholder
+      this.createHotspotPlaceholder(data, fallbackColor);
+      return;
+    }
+
+    const textureKey = `hotspot-${data.id}`;
+    const fullPath = config.assetPath(spriteConfig.path);
+
+    // Check if texture already exists
+    if (this.textures.exists(textureKey)) {
+      this.createHotspotSpriteFromTexture(data, textureKey, spriteConfig);
+      return;
+    }
+
+    // Try to load the sprite
+    this.load.image(textureKey, fullPath);
+    this.load.once('complete', () => {
+      if (this.textures.exists(textureKey)) {
+        // Remove placeholder if it exists
+        const existingPlaceholder = this.hotspotSprites.get(data.id);
+        if (existingPlaceholder) {
+          existingPlaceholder.destroy();
+        }
+        this.createHotspotSpriteFromTexture(data, textureKey, spriteConfig);
+      }
+    });
+    this.load.once('loaderror', () => {
+      // Log warning and create placeholder
+      assetWarningTracker.warn(
+        'missing-sprite',
+        `hotspot-${data.id}`,
+        `Furniture sprite not found`,
+        { expectedPath: fullPath }
+      );
+      this.createHotspotPlaceholder(data, fallbackColor);
+    });
+    this.load.start();
+  }
+
+  /**
+   * Create sprite from loaded texture
+   */
+  private createHotspotSpriteFromTexture(
+    data: SceneHotspot,
+    textureKey: string,
+    spriteConfig: NonNullable<SceneHotspot['sprite']>
+  ): void {
+    const scale = spriteConfig.scale ?? 1.0;
+    const offsetX = spriteConfig.offset_x ?? 0;
+    const offsetY = spriteConfig.offset_y ?? 0;
+
+    const sprite = this.add.sprite(
+      data.x + data.width / 2 + offsetX,
+      data.y + data.height / 2 + offsetY,
+      textureKey
+    );
+    sprite.setScale(scale);
+    sprite.setDepth(5);  // Behind interaction areas but above background
+
+    this.hotspotSprites.set(data.id, sprite);
+  }
+
+  /**
+   * Create dashed-border placeholder for missing hotspot sprite
+   */
+  private createHotspotPlaceholder(data: SceneHotspot, color: number): void {
+    const container = this.add.container(data.x + data.width / 2, data.y + data.height / 2);
+
+    // Draw dashed border
+    const graphics = this.add.graphics();
+    const dashLength = 6;
+    const gapLength = 4;
+    const halfW = data.width / 2;
+    const halfH = data.height / 2;
+
+    graphics.lineStyle(2, color, 0.8);
+
+    // Draw dashed rectangle
+    this.drawDashedLine(graphics, -halfW, -halfH, halfW, -halfH, dashLength, gapLength); // top
+    this.drawDashedLine(graphics, halfW, -halfH, halfW, halfH, dashLength, gapLength);   // right
+    this.drawDashedLine(graphics, halfW, halfH, -halfW, halfH, dashLength, gapLength);   // bottom
+    this.drawDashedLine(graphics, -halfW, halfH, -halfW, -halfH, dashLength, gapLength); // left
+
+    // Semi-transparent fill
+    graphics.fillStyle(color, 0.15);
+    graphics.fillRect(-halfW, -halfH, data.width, data.height);
+
+    // Centered label with hotspot ID
+    const label = this.add.text(0, 0, `[${data.id}]`, {
+      fontSize: '14px',
+      fontFamily: 'monospace',
+      color: '#FFFFFF',
+      backgroundColor: '#000000',
+      padding: { x: 4, y: 2 },
+    });
+    label.setOrigin(0.5);
+
+    container.add([graphics, label]);
+    container.setDepth(5);
+
+    this.hotspotSprites.set(data.id, container);
+  }
+
+  /**
+   * Draw a dashed line on graphics object
+   */
+  private drawDashedLine(
+    graphics: Phaser.GameObjects.Graphics,
+    x1: number, y1: number,
+    x2: number, y2: number,
+    dashLength: number, gapLength: number
+  ): void {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const unitX = dx / length;
+    const unitY = dy / length;
+
+    let drawn = 0;
+    let drawing = true;
+
+    while (drawn < length) {
+      const segmentLength = drawing ? dashLength : gapLength;
+      const endDraw = Math.min(drawn + segmentLength, length);
+
+      if (drawing) {
+        graphics.lineBetween(
+          x1 + unitX * drawn,
+          y1 + unitY * drawn,
+          x1 + unitX * endDraw,
+          y1 + unitY * endDraw
+        );
+      }
+
+      drawn = endDraw;
+      drawing = !drawing;
+    }
   }
 
   /**
@@ -458,6 +614,10 @@ export class RoomScene extends Phaser.Scene {
     // Destroy existing hotspots
     this.hotspots.forEach(h => h.destroy());
     this.hotspots = [];
+
+    // Destroy existing hotspot sprites
+    this.hotspotSprites.forEach(s => s.destroy());
+    this.hotspotSprites.clear();
 
     // Destroy existing prompts
     this.interactionPrompts.forEach(p => p.destroy());

@@ -13,6 +13,14 @@ import type { CharacterConfig } from '@presentation/components/Character';
 // Re-export character types for convenience
 export type { CharacterConfig, AnimationConfig, CharacterAccessibility } from '@presentation/components/Character';
 
+// Hotspot sprite configuration from YAML
+export interface HotspotSpriteConfig {
+  path: string;
+  scale?: number;
+  offset_x?: number;
+  offset_y?: number;
+}
+
 // Scene Script Types
 export interface SceneHotspot {
   id: string;
@@ -23,6 +31,7 @@ export interface SceneHotspot {
   action: string;
   label?: string;
   condition?: string;
+  sprite?: HotspotSpriteConfig;
 }
 
 export interface SceneScript {

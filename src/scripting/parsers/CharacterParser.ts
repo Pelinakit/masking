@@ -9,6 +9,7 @@ import type {
   AnimationConfig,
   CharacterAccessibility,
 } from '@presentation/components/Character';
+import { assetWarningTracker } from '@core/AssetWarningTracker';
 
 /**
  * Validation error for character configs
@@ -232,20 +233,72 @@ export class CharacterParser {
    * Validate that frame indices are within spritesheet bounds
    * @param config Character config to validate
    * @param totalFrames Total frames in the spritesheet
-   * @returns true if valid, throws if invalid
+   * @param options Validation options
+   * @returns Object with valid status and optionally clamped config
    */
-  validateFrameBounds(config: CharacterConfig, totalFrames: number): boolean {
+  validateFrameBounds(
+    config: CharacterConfig,
+    totalFrames: number,
+    options: { clamp?: boolean } = {}
+  ): { valid: boolean; clampedConfig?: CharacterConfig; outOfBoundsFrames: string[] } {
+    const outOfBoundsFrames: string[] = [];
+    let needsClamping = false;
+
+    // Check for out-of-bounds frames
     for (const [animName, animConfig] of Object.entries(config.animations)) {
       for (const frame of animConfig.frames) {
         if (frame >= totalFrames) {
-          throw new CharacterValidationError(
-            `Animation '${animName}' references frame ${frame}, but spritesheet only has ${totalFrames} frames (0-${totalFrames - 1})`,
-            `animations.${animName}.frames`
-          );
+          outOfBoundsFrames.push(`${animName}[${frame}]`);
+          needsClamping = true;
         }
       }
     }
-    return true;
+
+    // Log warning if there are issues (only once per character)
+    if (outOfBoundsFrames.length > 0) {
+      assetWarningTracker.warn(
+        'frame-mismatch',
+        config.id,
+        `YAML defines frames beyond spritesheet bounds`,
+        {
+          details: {
+            yamlMaxFrame: Math.max(...Object.values(config.animations).flatMap(a => a.frames)),
+            spritesheetFrames: totalFrames,
+            outOfBounds: outOfBoundsFrames,
+          },
+        }
+      );
+    }
+
+    // If clamping is requested, create a new config with clamped frames
+    if (options.clamp && needsClamping) {
+      const clampedAnimations: Record<string, AnimationConfig> = {};
+
+      for (const [animName, animConfig] of Object.entries(config.animations)) {
+        clampedAnimations[animName] = {
+          ...animConfig,
+          frames: animConfig.frames.map(frame =>
+            Math.min(frame, totalFrames - 1)
+          ),
+        };
+      }
+
+      const clampedConfig: CharacterConfig = {
+        ...config,
+        animations: clampedAnimations,
+      };
+
+      return {
+        valid: false,
+        clampedConfig,
+        outOfBoundsFrames,
+      };
+    }
+
+    return {
+      valid: outOfBoundsFrames.length === 0,
+      outOfBoundsFrames,
+    };
   }
 }
 
