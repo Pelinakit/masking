@@ -32,13 +32,13 @@ hotspots:
     idle_interact:
       delay: 3
       sprite:
-        path: assets/sprites/interactions/cat-bed-lounge.png
+        path: assets/sprites/interactions/cat-bed.png
         x: 448
         y: 560
         scale: 1.0
       animation:
-        frames: [0, 1]
-        frameRate: 2
+        frames: [0, 1, 2]
+        frameRate: 0.2
         repeat: -1
       accessibility:
         reducedMotionStaticFrame: 0
@@ -74,13 +74,13 @@ hotspots:
     idle_interact:
       delay: 2
       sprite:
-        path: assets/sprites/interactions/cat-laptop-curious.png
+        path: assets/sprites/interactions/cat-laptop-work.png
         x: 878
         y: 568
         scale: 1.0
       animation:
-        frames: [0, 1]
-        frameRate: 3
+        frames: [0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0]
+        frameRate: 5
         repeat: -1
       accessibility:
         reducedMotionStaticFrame: 0
@@ -92,7 +92,7 @@ hotspots:
         y: 568
         scale: 1.0
       animation:
-        frames: [0, 1, 2]
+        frames: [0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0]
         frameRate: 4
         repeat: -1
       accessibility:
@@ -116,12 +116,12 @@ hotspots:
     idle_interact:
       delay: 2
       sprite:
-        path: assets/sprites/interactions/cat-kitchen-sniff.png
+        path: assets/sprites/interactions/cat-cook.png
         x: 1392
         y: 568
         scale: 1.0
       animation:
-        frames: [0, 1]
+        frames: [0, 0, 1, 0, 1, 1]
         frameRate: 2
         repeat: -1
       accessibility:
@@ -159,13 +159,13 @@ hotspots:
     idle_interact:
       delay: 2
       sprite:
-        path: assets/sprites/interactions/cat-kitchen-sniff.png
-        x: 1392
-        y: 568
+        path: assets/sprites/interactions/cat-door.png
+        x: 1749
+        y: 545
         scale: 1.0
       animation:
-        frames: [0, 1]
-        frameRate: 2
+        frames: [1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0]
+        frameRate: 5
         repeat: -1
       accessibility:
         reducedMotionStaticFrame: 0
