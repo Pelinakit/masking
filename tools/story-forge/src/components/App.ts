@@ -8,6 +8,7 @@ import { fileService } from '../services/FileService.js';
 import { NodeEditorView } from './NodeEditorView.js';
 import { TimelineView } from './TimelineView.js';
 import { CharacterView } from './CharacterView.js';
+import { ArcView } from './ArcView.js';
 
 export class App {
   private container: HTMLElement;
@@ -83,14 +84,12 @@ export class App {
 
   private renderViewPlaceholder(view: ViewType): string {
     // Return empty div for dynamic views that need component instances
-    if (view === 'timeline' || view === 'editor' || view === 'characters') {
+    if (view === 'timeline' || view === 'editor' || view === 'characters' || view === 'arcs') {
       return '<div id="dynamic-view-container" style="width: 100%; height: 100%;"></div>';
     }
 
     // Return static HTML for other views
     switch (view) {
-      case 'arcs':
-        return this.renderArcsView();
       case 'assets':
         return this.renderAssetsView();
       case 'validate':
@@ -117,21 +116,9 @@ export class App {
       this.currentView = new NodeEditorView(container as HTMLElement);
     } else if (view === 'characters') {
       this.currentView = new CharacterView(container as HTMLElement);
+    } else if (view === 'arcs') {
+      this.currentView = new ArcView(container as HTMLElement);
     }
-  }
-
-  private renderArcsView(): string {
-    return `
-      <div class="panel">
-        <div class="panel-header">
-          <h2 class="panel-title">Story Arcs</h2>
-        </div>
-        <p class="text-dim">Story arc tracker will appear here.</p>
-        <p class="text-sm text-dim" style="margin-top: 16px;">
-          Track narrative threads across multiple days and ensure continuity.
-        </p>
-      </div>
-    `;
   }
 
   private renderAssetsView(): string {

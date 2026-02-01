@@ -4,18 +4,58 @@
  */
 
 import { store } from '../state/store.js';
-import type { Week, DayReference, DaySummary } from '../types/index.js';
+import type { Week, DayReference, DaySummary, StoryArc } from '../types/index.js';
 
 export class TimelineView {
   private container: HTMLElement;
   private weeks: Week[] = [];
   private draggedDay: DayReference | null = null;
   private draggedFromWeek: number | null = null;
+  private arcs: StoryArc[] = [];
 
   constructor(container: HTMLElement) {
     this.container = container;
+    this.loadArcs();
     this.loadWeeks();
     this.render();
+  }
+
+  /**
+   * Load arcs from shared storage
+   */
+  private loadArcs(): void {
+    // In a real implementation, this would load from the store
+    // For now, we'll use the same sample arcs as ArcView
+    this.arcs = [
+      {
+        id: 'arc-client-presentation',
+        name: 'Client Presentation',
+        description: 'Preparing for and delivering the big client presentation on Friday',
+        color: '#4a9eff',
+        dayIds: ['week1-monday', 'week1-tuesday', 'week1-wednesday', 'week1-thursday', 'week1-friday'],
+      },
+      {
+        id: 'arc-wellness-week',
+        name: 'Wellness Week',
+        description: 'Company-wide wellness initiative with meditation and activities',
+        color: '#10b981',
+        dayIds: ['week1-wednesday', 'week1-thursday'],
+      },
+      {
+        id: 'arc-team-conflict',
+        name: 'Team Conflict',
+        description: 'Tension with coworker Pug over project ownership',
+        color: '#f87171',
+        dayIds: ['week1-monday', 'week1-friday'],
+      },
+    ];
+  }
+
+  /**
+   * Get arcs for a specific day
+   */
+  private getArcsForDay(dayId: string): StoryArc[] {
+    return this.arcs.filter(arc => arc.dayIds.includes(dayId));
   }
 
   /**
@@ -53,11 +93,14 @@ export class TimelineView {
    * Create a day reference with sample data
    */
   private createDayReference(name: string, week: number, fileName: string): DayReference {
+    const dayId = `week${week}-${name.toLowerCase()}`;
+    const dayArcs = this.getArcsForDay(dayId);
+
     return {
-      id: `week${week}-${name.toLowerCase()}`,
+      id: dayId,
       name,
       filePath: `/data/stories/scenarios/${fileName}`,
-      arcs: [],
+      arcs: dayArcs.map(arc => arc.id),
       summary: {
         emailCount: Math.floor(Math.random() * 8) + 2,
         meetingCount: Math.floor(Math.random() * 4) + 1,
@@ -111,11 +154,22 @@ export class TimelineView {
    * Render a day card
    */
   private renderDayCard(day: DayReference, weekNumber: number): string {
+    const dayArcs = this.getArcsForDay(day.id);
+
     return `
       <div class="day-card"
            data-day-id="${day.id}"
            data-week="${weekNumber}"
            draggable="true">
+        ${dayArcs.length > 0 ? `
+          <div class="day-card-arc-indicators">
+            ${dayArcs.map(arc => `
+              <div class="arc-indicator"
+                   style="background-color: ${arc.color};"
+                   title="${arc.name}"></div>
+            `).join('')}
+          </div>
+        ` : ''}
         <div class="day-card-header">
           <h4>${day.name}</h4>
           <div class="day-card-actions">
@@ -154,9 +208,13 @@ export class TimelineView {
             <span class="stress-bar-label">Stress: +${day.summary.totalStressGain}</span>
           </div>
         </div>
-        ${day.arcs.length > 0 ? `
+        ${dayArcs.length > 0 ? `
           <div class="day-card-arcs">
-            ${day.arcs.map(arcId => `<span class="arc-tag">${arcId}</span>`).join('')}
+            ${dayArcs.map(arc => `
+              <span class="arc-tag" style="background-color: ${arc.color}20; color: ${arc.color}; border-color: ${arc.color};">
+                ${arc.name}
+              </span>
+            `).join('')}
           </div>
         ` : ''}
       </div>

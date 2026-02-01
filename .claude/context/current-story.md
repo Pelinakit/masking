@@ -1,60 +1,137 @@
 # Current Story
 
 ## User Story
-As a game developer/content creator, I want YAML files to specify sprite paths and frame data for characters, items, furniture, and scenes so that assets can be loaded in a data-driven manner with graceful fallbacks for missing or mismatched assets.
+As a script/story writer, I want a comprehensive authoring toolkit so that I can create, organize, preview, and validate all game content (dialogue, events, NPCs, days) without touching code.
 
 ## Acceptance Criteria
-- [x] YAML files can specify sprite paths and frame data for characters, items, furniture, scenes
-- [x] System loads assets based on YAML configuration
-- [x] Missing sprite path triggers console warning (once per asset) and uses placeholder
-- [x] Frame count mismatch (YAML defines more frames than spritesheet has) triggers console warning (once per asset) and uses available frames
-- [x] Game continues running without crashing when assets are missing/mismatched
 
-## Implementation Summary
+### Core Scripting (Engine)
+- [x] Single YAML file can script an entire in-game day
+- [x] Dialogue, events, NPC states controllable via YAML
+- [x] Player stats modifiable through script
+- [x] Email/task content definable in YAML
+- [x] Random events pool with weighted + conditional filtering
+- [x] Interoperability with NPC, player, and home YAML files
+- [x] Cumulative NPC relationship state across days
+- [x] Linear-with-flavor branching
 
-### New Files Created
-- `src/core/AssetWarningTracker.ts` - Centralized warning deduplication with styled console output
+### Writer Toolkit (Story Forge)
+- [x] Browser-based UI with local Bun server for file I/O
+- [x] Visual node editor for dialogue trees
+- [x] Import/export YAML files - Bidirectional
+- [x] Week/day timeline view for organizing content
+- [x] Character database with voice/sprite configuration
+- [x] Story arc tracking across multiple days (S27-S30) - COMPLETE
+- [ ] Asset manager for sprites, sounds, backgrounds (S31-S34 next)
+- [x] Speech-gen integration for dialogue audio preview - Web Audio API
+- [ ] YAML validation with helpful error messages (S35-S39)
 
-### Modified Files
-- `src/presentation/scenes/BootScene.ts` - Integrated AssetWarningTracker, enhanced placeholder sprites with CVD-friendly patterns
-- `src/presentation/components/Character.ts` - Added runtime frame validation with automatic clamping
-- `src/scripting/parsers/CharacterParser.ts` - Changed `validateFrameBounds()` to warn instead of throw
-- `src/scripting/YAMLParser.ts` - Extended SceneHotspot type with sprite configuration
-- `src/presentation/scenes/RoomScene.ts` - Load hotspot sprites from YAML with dashed-border placeholder fallback
-- `src/presentation/scenes/DevOverlayScene.ts` - Added DEV MODE indicator and Asset Status panel
+## Progress
 
-### Features Implemented
+### Completed (2026-02-01)
 
-1. **AssetWarningTracker** - Centralized warning system
-   - Deduplicates warnings (logs once per asset)
-   - Styled console output with severity levels
-   - Tracks all warnings for dev tools
-   - `getAll()`, `getSummary()`, `clear()` methods
+**Track A: Game Engine** (9/13 tasks - 69%) ✅
+- E1-E4: Core infrastructure
+- E5-E9: Systems integration
 
-2. **Enhanced Placeholder Sprites**
-   - Diagonal stripe pattern (CVD-friendly)
-   - Warning triangle icon in top-left corner
-   - High-contrast text with black stroke
-   - Frame numbers at bottom
+**Track B: Story Forge Toolkit** (27/44 tasks - 61%) ✅
 
-3. **Frame Validation & Clamping**
-   - CharacterParser.validateFrameBounds() now warns instead of throwing
-   - Character.createAnimations() validates frames at runtime
-   - Out-of-bounds frames automatically clamped to available range
+1. **S1-S4: Foundation** ✅
+2. **S13-S20: Node Editor Core** ✅
+3. **S25-S26: YAML Serialization** ✅
+4. **S5-S8: Timeline View** ✅
+5. **S9-S12: Character Database** ✅
+6. **S27-S30: Story Arc Tracker** ✅
+   - Arc list/editor with color-coding
+   - Arc indicators on timeline (color bars)
+   - Day assignment system
+   - Continuity checker with gap detection
 
-4. **Hotspot Sprite Loading**
-   - SceneHotspot type extended with sprite config (path, scale, offset)
-   - RoomScene loads sprites from YAML paths
-   - Dashed-border placeholder for missing sprites
-   - Hot-reload support
+### Major Milestone: Over 60% Complete
 
-5. **Dev Mode Enhancements**
-   - "🔧 DEV MODE" indicator (top-left)
-   - "Asset Status" button with popup panel
-   - Panel shows all missing/mismatched assets
-   - Clear All button to reset warnings
+The toolkit now has:
+1. **Timeline** → Organize weeks and days with arc indicators
+2. **Editor** → Build dialogue visually
+3. **Characters** → Manage NPCs with voice preview
+4. **Story Arcs** → Track narrative threads across days
+5. **YAML** → Export/import scenarios
+
+### Next Priority
+
+**Asset Manager (S31-S34)**
+- S31: Asset browser tree view
+- S32: Asset preview (sprites, sounds)
+- S33: Drag-to-insert
+- S34: Missing asset scanner
+
+**Validation (S35-S39)**
+- S35: JSON schemas
+- S36: Real-time validator
+- S37: Dead-end detector
+- S38: Stat balance analyzer
+- S39: Export panel
+
+**Polish (S40-S44)**
+- S40: Keyboard shortcuts
+- S41: Auto-save
+- S42: Dark/light theme
+- S43: Documentation
+- S44: Sample project
+
+### Files Created/Modified
+
+**Story Forge**:
+- `src/components/App.ts` - Added ArcView integration
+- `src/components/ArcView.ts` - NEW: Arc tracker component
+- `src/components/TimelineView.ts` - Added arc color indicators
+- `styles/main.css` - Arc view + arc indicator styles
+
+### Commits Created (9 total)
+
+1. `feat(tools): scaffold story-forge with server and state management`
+2. `feat(scripting): add scenario types and loader with hybrid time flow`
+3. `feat(game): add email, task, and event management systems`
+4. `docs(adr): add ADR 0006 for YAML scripting system architecture`
+5. `feat(story-forge): implement visual node editor with canvas and node types`
+6. `feat(story-forge): implement bidirectional YAML serialization`
+7. `feat(story-forge): implement timeline view for organizing game days`
+8. `feat(story-forge): implement character database with voice preview`
+9. `feat(story-forge): implement story arc tracker with continuity checker` (pending)
+
+### Story Arc Tracker Features
+
+**Arc Management**:
+- Add/delete story arcs
+- Pre-loaded sample arcs (Client Presentation, Wellness Week, Team Conflict)
+- Custom color picker for each arc
+- Arc description text
+
+**Timeline Integration**:
+- Color bars at top of day cards
+- Arc tags on day cards with custom colors
+- Visual indication of which arcs span which days
+
+**Day Assignment**:
+- Assign arcs to specific days
+- Multi-select day assignment
+- Remove days from arcs
+- Day tags showing assigned days
+
+**Continuity Checker**:
+- Detects gaps in arc day sequences
+- Warning icons for arcs with continuity issues
+- Validation panel showing all issues
+- Chronological day sorting (week1-monday < week1-tuesday < week2-monday)
+
+**Sample Arcs**:
+- Client Presentation: Blue (#4a9eff), spans Week 1
+- Wellness Week: Green (#10b981), mid-week days
+- Team Conflict: Red (#f87171), discontinuous days
 
 ## Status
 - Created: 2026-02-01
-- Completed: 2026-02-01
-- Phase: done
+- Phase: implementation (4.2)
+- Last Update: 2026-02-01
+- Progress: 36/57 total tasks (63%)
+- **Milestone**: Over 60% complete
+- Next: Asset manager (S31-S34) for sprite/sound browsing
