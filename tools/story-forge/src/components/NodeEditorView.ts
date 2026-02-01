@@ -234,14 +234,13 @@ export class NodeEditorView {
   }
 
   /**
-   * Update the toolbar to show the current file name
+   * Update the menubar to show the current file name
    */
   private updateToolbarFileName(): void {
     const fileNameEl = this.container.querySelector('#current-file-name');
 
     if (fileNameEl && this.currentFileName) {
       fileNameEl.textContent = this.currentFileName;
-      fileNameEl.classList.add('has-file');
       console.log(`[Editor] File name set: ${this.currentFileName}`);
     }
 
@@ -281,12 +280,29 @@ export class NodeEditorView {
   private render(): void {
     this.container.innerHTML = `
       <div class="node-editor-view">
-        <div class="node-editor-toolbar">
-          <div class="toolbar-section toolbar-file-info">
-            <span class="file-label">Editing:</span>
+        <div class="node-editor-menubar">
+          <div class="menubar-left">
             <span class="file-name" id="current-file-name">New Scenario</span>
+            <span class="save-status-dot" id="save-status-dot" title="No changes"></span>
           </div>
+          <div class="menubar-center">
+            <button class="menubar-btn" id="undo-btn" title="Undo (Ctrl+Z)">↩</button>
+            <button class="menubar-btn" id="redo-btn" title="Redo (Ctrl+Y)">↪</button>
+            <span class="menubar-divider"></span>
+            <button class="menubar-btn" id="zoom-fit-btn" title="Zoom to Fit">🔍</button>
+            <button class="menubar-btn" id="zoom-reset-btn" title="Reset Zoom">↻</button>
+            <button class="menubar-btn" id="clear-btn" title="Clear Canvas">🗑️</button>
+          </div>
+          <div class="menubar-right">
+            <button class="menubar-btn" id="import-btn" title="Import YAML">📥</button>
+            <button class="menubar-btn menubar-btn-primary" id="save-now-btn" title="Save (Ctrl+S)">💾</button>
+            <button class="menubar-btn" id="export-btn" title="Export YAML">📤</button>
+            <button class="menubar-btn" id="backup-history-btn" title="Backup History">🕐</button>
+          </div>
+        </div>
+        <div class="node-editor-toolbar">
           <div class="toolbar-section">
+            <span class="toolbar-label">Nodes:</span>
             <button class="button button-secondary" id="add-dialogue-btn" title="Add Dialogue Node">
               💬 Dialogue
             </button>
@@ -301,6 +317,7 @@ export class NodeEditorView {
             </button>
           </div>
           <div class="toolbar-section toolbar-events">
+            <span class="toolbar-label">Events:</span>
             <button class="button button-secondary" id="add-email-btn" title="Add Email Event">
               📧 Email
             </button>
@@ -313,42 +330,6 @@ export class NodeEditorView {
             <button class="button button-secondary" id="add-message-btn" title="Add Message Event">
               💬 Message
             </button>
-          </div>
-          <div class="toolbar-section">
-            <button class="button button-secondary" id="undo-btn" title="Undo (Ctrl+Z)">
-              ↩ Undo
-            </button>
-            <button class="button button-secondary" id="redo-btn" title="Redo (Ctrl+Y)">
-              ↪ Redo
-            </button>
-          </div>
-          <div class="toolbar-section">
-            <button class="button button-secondary" id="zoom-fit-btn" title="Zoom to Fit">
-              🔍 Fit
-            </button>
-            <button class="button button-secondary" id="zoom-reset-btn" title="Reset Zoom">
-              ↻ Reset
-            </button>
-            <button class="button button-secondary" id="clear-btn" title="Clear Canvas">
-              🗑️ Clear
-            </button>
-          </div>
-          <div class="toolbar-section">
-            <button class="button button-secondary" id="import-btn" title="Import YAML">
-              📥 Import
-            </button>
-            <button class="button" id="save-now-btn" title="Save Now (Ctrl+S)">
-              💾 Save
-            </button>
-            <button class="button button-secondary" id="export-btn" title="Export to YAML">
-              📤 Export
-            </button>
-            <button class="button button-secondary" id="backup-history-btn" title="Backup History">
-              🕐 History
-            </button>
-          </div>
-          <div class="toolbar-section toolbar-status">
-            <span class="save-status-dot" id="save-status-dot" title="No changes"></span>
           </div>
         </div>
         <div class="node-editor-canvas" id="editor-canvas"></div>

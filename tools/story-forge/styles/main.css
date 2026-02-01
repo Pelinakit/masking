@@ -288,14 +288,84 @@ body {
   width: 100%;
 }
 
+/* Node Editor Menubar (compact top bar) */
+.node-editor-menubar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-xs) var(--spacing-md);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  height: 36px;
+}
+
+.menubar-left,
+.menubar-center,
+.menubar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.menubar-left .file-name {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.menubar-left .save-status-dot {
+  width: 8px;
+  height: 8px;
+}
+
+.menubar-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.menubar-btn:hover {
+  background: var(--color-bg-lighter);
+  color: var(--color-text);
+}
+
+.menubar-btn-primary {
+  color: var(--color-primary);
+}
+
+.menubar-btn-primary:hover {
+  background: rgba(74, 158, 255, 0.15);
+}
+
+.menubar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--color-border);
+  margin: 0 var(--spacing-xs);
+}
+
+/* Node Editor Toolbar (main node buttons) */
 .node-editor-toolbar {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
-  padding: var(--spacing-md);
+  gap: var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--color-bg-light);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
+}
+
+.toolbar-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-dim);
+  margin-right: var(--spacing-xs);
 }
 
 .toolbar-section {
@@ -1956,18 +2026,13 @@ textarea:focus {
 }
 
 /* Save status indicator */
-.toolbar-status {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-}
-
 .save-status-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background-color: #6b7280;
   cursor: help;
+  flex-shrink: 0;
 }
 
 /* ============================================================================
