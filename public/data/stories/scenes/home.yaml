@@ -16,6 +16,7 @@ hotspots:
       scale: 1.0
       offset_x: 0
       offset_y: 0
+      layer: background
 
   - id: laptop
     x: 400
@@ -29,6 +30,7 @@ hotspots:
       scale: 1.0
       offset_x: 0
       offset_y: 0
+      layer: foreground
 
   - id: kitchen
     x: 700

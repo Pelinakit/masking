@@ -10,7 +10,7 @@ import { StatBarGroup } from '@presentation/ui/StatBarGroup';
 import { ClockDisplay } from '@presentation/ui/ClockDisplay';
 import { UILayerManager } from '@presentation/ui/UILayerManager';
 import { DebugPanel } from '@presentation/ui/DebugPanel';
-import { yamlParser, type SceneScript, type SceneHotspot } from '@scripting/YAMLParser';
+import { yamlParser, type SceneScript, type SceneHotspot, type SceneLayer } from '@scripting/YAMLParser';
 import { assetWarningTracker } from '@core/AssetWarningTracker';
 import { config } from '../../config';
 import { InputManager } from '@game/systems/InputManager';
@@ -38,6 +38,15 @@ export class RoomScene extends Phaser.Scene {
   private playerX: number = 400;
   private readonly PLAYER_SPEED = 150;
   private readonly ROOM_BOUNDS = { left: 50, right: 950 };
+
+  // Depth layers for proper rendering order
+  private static readonly DEPTH = {
+    BACKGROUND: 1,        // Behind everything
+    HOTSPOT_BG: 5,        // Background furniture (behind characters)
+    CHARACTER: 50,        // Player and NPCs
+    HOTSPOT_FG: 100,      // Foreground elements (in front of characters)
+    UI: 1000,             // UI elements
+  };
 
   // Fallback animation state (when Character class isn't used)
   private fallbackAnimState: string = 'idle';
@@ -333,6 +342,7 @@ export class RoomScene extends Phaser.Scene {
         accessibilitySettings
       );
       this.player.setOrigin(0.5, 1);
+      this.player.setDepth(RoomScene.DEPTH.CHARACTER);
 
       console.log('[RoomScene] Created player with Character class');
     } else {
@@ -364,6 +374,7 @@ export class RoomScene extends Phaser.Scene {
     // Create sprite
     this.player = this.add.sprite(this.playerX, 500, 'player-placeholder');
     this.player.setOrigin(0.5, 1);
+    this.player.setDepth(RoomScene.DEPTH.CHARACTER);
 
     // Add "P" label on the sprite
     const pLabel = this.add.text(this.playerX, 500 - frameHeight / 2, 'P', {
@@ -375,7 +386,7 @@ export class RoomScene extends Phaser.Scene {
       strokeThickness: 4,
     });
     pLabel.setOrigin(0.5, 0.5);
-    pLabel.setDepth(100);
+    pLabel.setDepth(RoomScene.DEPTH.CHARACTER + 1);
 
     // Add debug text for frame info
     const debugText = this.add.text(this.playerX, 500 - frameHeight - 5, '[?] idle', {
@@ -518,6 +529,7 @@ export class RoomScene extends Phaser.Scene {
     const scale = spriteConfig.scale ?? 1.0;
     const offsetX = spriteConfig.offset_x ?? 0;
     const offsetY = spriteConfig.offset_y ?? 0;
+    const layer = spriteConfig.layer ?? 'background';
 
     const sprite = this.add.sprite(
       data.x + data.width / 2 + offsetX,
@@ -525,9 +537,18 @@ export class RoomScene extends Phaser.Scene {
       textureKey
     );
     sprite.setScale(scale);
-    sprite.setDepth(5);  // Behind interaction areas but above background
+    sprite.setDepth(this.getLayerDepth(layer));
 
     this.hotspotSprites.set(data.id, sprite);
+  }
+
+  /**
+   * Get depth value for a layer
+   */
+  private getLayerDepth(layer: SceneLayer): number {
+    return layer === 'foreground'
+      ? RoomScene.DEPTH.HOTSPOT_FG
+      : RoomScene.DEPTH.HOTSPOT_BG;
   }
 
   /**
@@ -535,6 +556,7 @@ export class RoomScene extends Phaser.Scene {
    */
   private createHotspotPlaceholder(data: SceneHotspot, color: number): void {
     const container = this.add.container(data.x + data.width / 2, data.y + data.height / 2);
+    const layer = data.sprite?.layer ?? 'background';
 
     // Draw dashed border
     const graphics = this.add.graphics();
@@ -555,8 +577,9 @@ export class RoomScene extends Phaser.Scene {
     graphics.fillStyle(color, 0.15);
     graphics.fillRect(-halfW, -halfH, data.width, data.height);
 
-    // Centered label with hotspot ID
-    const label = this.add.text(0, 0, `[${data.id}]`, {
+    // Centered label with hotspot ID and layer indicator
+    const layerIndicator = layer === 'foreground' ? '▲' : '▼';
+    const label = this.add.text(0, 0, `[${data.id}] ${layerIndicator}`, {
       fontSize: '14px',
       fontFamily: 'monospace',
       color: '#FFFFFF',
@@ -566,7 +589,7 @@ export class RoomScene extends Phaser.Scene {
     label.setOrigin(0.5);
 
     container.add([graphics, label]);
-    container.setDepth(5);
+    container.setDepth(this.getLayerDepth(layer));
 
     this.hotspotSprites.set(data.id, container);
   }

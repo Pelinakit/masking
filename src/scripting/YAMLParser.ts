@@ -13,12 +13,16 @@ import type { CharacterConfig } from '@presentation/components/Character';
 // Re-export character types for convenience
 export type { CharacterConfig, AnimationConfig, CharacterAccessibility } from '@presentation/components/Character';
 
+// Layer types for scene elements
+export type SceneLayer = 'background' | 'foreground';
+
 // Hotspot sprite configuration from YAML
 export interface HotspotSpriteConfig {
   path: string;
   scale?: number;
   offset_x?: number;
   offset_y?: number;
+  layer?: SceneLayer;  // 'background' (behind characters) or 'foreground' (in front)
 }
 
 // Scene Script Types
